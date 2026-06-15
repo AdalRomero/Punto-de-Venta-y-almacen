@@ -1,0 +1,163 @@
+/* =============================================
+   App Cuchilla — Estilos y Animaciones de Login
+   ============================================= */
+
+/* Animación de entrada con desplazamiento lateral (slide-in) */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Efecto de flotación sutil para el avatar y badge del autor */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Brillo sutil de fondo */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* Clases de animación */
+.animate-slide-in-left {
+  animation: slideInLeft 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* Delays de animación para transiciones escalonadas */
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Curva orgánica del panel izquierdo */
+.login-left-panel {
+  position: relative;
+  overflow: hidden;
+  clip-path: ellipse(125% 100% at 0% 50%);
+}
+
+@media (max-width: 1024px) {
+  .login-left-panel {
+    clip-path: ellipse(100% 125% at 50% 0%);
+  }
+}
+
+/* Efectos de cristal (Glassmorphism) para los overlays */
+.glass-overlay {
+  background: rgba(58, 50, 45, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-profile {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Estilos de input y foco personalizado */
+.login-input {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1.5px solid var(--cuh-border);
+  background-color: var(--cuh-bg-white);
+  color: var(--cuh-text-dark);
+}
+
+.login-input:focus {
+  border-color: var(--cuh-primary);
+  box-shadow: 0 0 0 4px rgba(229, 142, 101, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Estilo para el botón de login principal */
+.login-btn-submit {
+  background: var(--cuh-primary);
+  box-shadow: 0 4px 14px 0 rgba(229, 142, 101, 0.4);
+  transition: all 0.2s ease;
+}
+
+.login-btn-submit:hover {
+  background: var(--cuh-primary-hover);
+  box-shadow: 0 6px 20px 0 rgba(229, 142, 101, 0.6);
+  transform: translateY(-1px);
+}
+
+.login-btn-submit:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px 0 rgba(229, 142, 101, 0.3);
+}
+
+/* Contenedor principal de la tarjeta de login con sombra pesada premium */
+.login-card-container {
+  box-shadow: 0 20px 50px -12px rgba(58, 50, 45, 0.18);
+  border: 1px solid var(--cuh-border-light);
+}
+
+/* Botón de Google con hover interactivo */
+.google-login-btn {
+  transition: all 0.2s ease;
+  border: 1.5px solid var(--cuh-border);
+}
+
+.google-login-btn:hover {
+  background-color: var(--cuh-primary-50);
+  border-color: var(--cuh-primary);
+  color: var(--cuh-primary-hover);
+  transform: translateY(-1px);
+}

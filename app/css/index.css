@@ -10,59 +10,71 @@
    Variables CSS — Design Tokens (Paleta Terrosa/Cálida)
    ============================================= */
 :root {
-  /* Colores corporativos (Coral / Melocotón) */
-  --cuh-primary: #E58E65;
-  --cuh-primary-hover: #D47A50;
-  --cuh-primary-light: #FCECE5;
-  --cuh-primary-50: #FFF6F2;
+  /* =============================================
+     Paleta armonizada — Terracota cálida + Salvia
+     Misma base de marca (naranja + verde) pero
+     desaturada y "mezclada" con un tinte cálido
+     común para que ambos colores convivan bien.
+     ============================================= */
 
-  /* Fondos (Linen / Lino) */
-  --cuh-bg: #F4F0EB;
+  /* Colores corporativos (Terracota — versión natural del naranja) */
+  --cuh-primary: #C2652F;
+  --cuh-primary-hover: #A2531F;
+  --cuh-primary-light: #F1DCC4;
+  --cuh-primary-50: #FBF4EB;
+  --cuh-primary-rgb: 194, 101, 47;
+
+  /* Fondos */
+  --cuh-bg: #FAF8F3;
   --cuh-bg-white: #FFFFFF;
-  --cuh-bg-sidebar: #655D58;
-  /* Taupe para contraste en sidebar */
+  --cuh-bg-sidebar: #2B3A2A;
 
   /* Textos */
-  --cuh-text-dark: #3A322D;
-  /* Marrón muy oscuro */
-  --cuh-text-base: #655D58;
-  /* Taupe / Gris cálido */
-  --cuh-text-muted: #8B827C;
-  --cuh-text-light: #B5ABA4;
-  --cuh-text-bglight: #F4F0EB;
+  --cuh-text-dark: #263223;
+  --cuh-text-base: #4B5745;
+  --cuh-text-muted: #78846F;
+  --cuh-text-light: #A6AF9C;
+  --cuh-text-bglight: #F1DCC4;
 
-  /* Bordes (Oat / Avena) */
-  --cuh-border: #E4D0B3;
-  --cuh-border-light: #F1E6D8;
+  /* Bordes */
+  --cuh-border: #DEE2D4;
+  --cuh-border-light: #ECEEE4;
 
-  /* Estados (Adaptados a tonos naturales/orgánicos) */
-  --cuh-success: #5C8B2F;
-  /* Verde natural/oliva */
-  --cuh-success-bg: #F2F7EC;
-  --cuh-success-text: #3C5E1C;
-  --cuh-warning: #D99A29;
-  /* Ocre / Mostaza */
-  --cuh-warning-bg: #FFFBF0;
-  --cuh-warning-text: #8C5D0E;
-  --cuh-danger: #9C432D;
-  /* Rust / Óxido profundo */
-  --cuh-danger-bg: #FAEBE8;
-  --cuh-danger-text: #6B2A1A;
-  --cuh-info: #4A7C8E;
-  /* Azul pizarra terroso */
-  --cuh-info-bg: #EDF4F6;
-  --cuh-info-text: #2A4C58;
+  /* Verde salvia (versión natural del verde brillante) */
+  --cuh-secondary: #6E9463;
+  --cuh-secondary-hover: #587A4F;
+  --cuh-secondary-bg: #EBF1E6;
+  --cuh-secondary-text: #3E5936;
+
+  /* Estados */
+  --cuh-success: #4F7A46;
+  /* Verde bosque suave */
+  --cuh-success-bg: #EAF1E5;
+  --cuh-success-text: #345530;
+  --cuh-warning: #C98A3B;
+  /* Ámbar cálido, ya no neón */
+  --cuh-warning-bg: #FAF1E3;
+  --cuh-warning-text: #8A5A20;
+  --cuh-danger: #BC5744;
+  /* Rojo ladrillo, de la misma familia cálida que el naranja */
+  --cuh-danger-bg: #F8EAE6;
+  --cuh-danger-text: #7A3627;
+  --cuh-danger-rgb: 188, 87, 68;
+  --cuh-info: #5E93A0;
+  /* Teal apagado */
+  --cuh-info-bg: #EAF2F3;
+  --cuh-info-text: #33606B;
 
   /* Alertas */
-  --cuh-alert-error: #9C432D;
-  --cuh-alert-success: #5C8B2F;
-  --cuh-alert-warning: #D99A29;
+  --cuh-alert-error: var(--cuh-danger);
+  --cuh-alert-success: var(--cuh-success);
+  --cuh-alert-warning: var(--cuh-warning);
 
-  /* Sombras (Ligeramente más cálidas) */
-  --cuh-shadow-sm: 0 1px 2px 0 rgba(58, 50, 45, 0.05);
-  --cuh-shadow: 0 1px 3px 0 rgba(58, 50, 45, 0.1), 0 1px 2px -1px rgba(58, 50, 45, 0.06);
-  --cuh-shadow-md: 0 4px 6px -1px rgba(58, 50, 45, 0.1), 0 2px 4px -2px rgba(58, 50, 45, 0.06);
-  --cuh-shadow-lg: 0 10px 15px -3px rgba(58, 50, 45, 0.1), 0 4px 6px -4px rgba(58, 50, 45, 0.05);
+  /* Sombras (con un tinte del verde oscuro del sidebar) */
+  --cuh-shadow-sm: 0 1px 2px 0 rgba(43, 58, 42, 0.06);
+  --cuh-shadow: 0 1px 3px 0 rgba(43, 58, 42, 0.10), 0 1px 2px -1px rgba(43, 58, 42, 0.06);
+  --cuh-shadow-md: 0 4px 6px -1px rgba(43, 58, 42, 0.10), 0 2px 4px -2px rgba(43, 58, 42, 0.06);
+  --cuh-shadow-lg: 0 10px 15px -3px rgba(43, 58, 42, 0.10), 0 4px 6px -4px rgba(43, 58, 42, 0.05);
 
   /* Radios */
   --cuh-radius: 8px;
@@ -70,15 +82,17 @@
   --cuh-radius-xl: 16px;
 
   /* Sidebar */
-  --cuh-sidebar-bg: #655D58;
-  /* Taupe oscuro */
-  --cuh-sidebar-text: #F4F0EB;
-  /* Linen claro */
-  --cuh-sidebar-hover-bg: #8B827C;
-  /* Taupe más claro */
-  --cuh-sidebar-active-bg: #E58E65;
-  /* Acento Coral */
-  --cuh-sidebar-width: 240px;
+  --cuh-sidebar-bg: #2B3A2A;
+  /* Verde oscuro cálido, mezclado con carbón para suavizarlo */
+  --cuh-sidebar-text: #F6F2E9;
+  /* Blanco cálido para máxima legibilidad */
+  --cuh-sidebar-text-light: #e3ebdc;
+  --cuh-sidebar-text-bglight: #E3C79C;
+  /* Tostado suave, ya no amarillo puro */
+  --cuh-sidebar-hover-bg: #3B4E38;
+  --cuh-sidebar-active-bg: var(--cuh-primary);
+
+  --cuh-sidebar-width: 96px;
   --cuh-header-height: 64px;
 }
 
@@ -152,15 +166,81 @@ body {
 
 .app-header {
   height: var(--cuh-header-height);
-  background: var(--cuh-bg-white);
-  border-bottom: 1px solid var(--cuh-border);
+  background: var(--cuh-sidebar-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px -8px rgba(20, 26, 18, 0.35);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 28px;
   position: sticky;
   top: 0;
   z-index: 30;
+}
+
+.app-header .mobile-menu-btn {
+  color: var(--cuh-sidebar-text);
+}
+
+.app-header .mobile-menu-btn:hover {
+  background: var(--cuh-sidebar-hover-bg);
+  border-radius: var(--cuh-radius);
+}
+
+.app-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-breadcrumb__root {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cuh-sidebar-text-light);
+}
+
+.app-breadcrumb__sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cuh-primary);
+  flex-shrink: 0;
+}
+
+.app-breadcrumb__current {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cuh-sidebar-text);
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header .btn-icon {
+  color: var(--cuh-sidebar-text-light);
+}
+
+.app-header .btn-icon:hover {
+  background: var(--cuh-sidebar-hover-bg);
+  color: var(--cuh-sidebar-text);
+}
+
+.app-notif-btn {
+  position: relative;
+}
+
+.app-notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cuh-primary);
+  border: 2px solid var(--cuh-sidebar-bg);
 }
 
 .app-content {
@@ -251,13 +331,13 @@ body {
 }
 
 .sidebar-link.danger:hover {
-  background-color: rgba(156, 67, 45, 0.2);
+  background-color: rgba(var(--cuh-danger-rgb), 0.2);
 }
 
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(58, 50, 45, 0.5);
+  background: rgba(24, 32, 22, 0.5);
   z-index: 35;
   display: none;
 }
@@ -375,7 +455,16 @@ body {
 }
 
 .btn-success:hover {
-  background: #4A7026;
+  background: #134F35;
+}
+
+.btn-secondary-green {
+  background: var(--cuh-secondary);
+  color: white;
+}
+
+.btn-secondary-green:hover {
+  background: var(--cuh-secondary-hover);
 }
 
 .btn-danger {
@@ -494,8 +583,8 @@ body {
 }
 
 .badge-baja {
-  background: var(--cuh-success-bg);
-  color: var(--cuh-success);
+  background: var(--cuh-secondary-bg);
+  color: var(--cuh-secondary-text);
 }
 
 .badge-media {
@@ -504,8 +593,8 @@ body {
 }
 
 .badge-alta {
-  background: #FEF3E6;
-  color: #B25A00;
+  background: var(--cuh-warning-bg);
+  color: var(--cuh-warning-text);
 }
 
 .badge-critica {
@@ -559,8 +648,8 @@ body {
 .form-textarea:focus {
   outline: none;
   border-color: var(--cuh-primary);
-  box-shadow: 0 0 0 3px rgba(229, 142, 101, 0.15);
-  /* Sombra color Coral */
+  box-shadow: 0 0 0 3px rgba(var(--cuh-primary-rgb), 0.15);
+  /* Sombra color Terracota */
 }
 
 .form-input::placeholder,

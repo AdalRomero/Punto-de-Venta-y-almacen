@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import logo from '../../assets/logo.png';
 import '../css/sidebar.css';
 
 /* ─── Nav items definition ──────────────────────── */
 interface NavItem {
   id: string;
   label: string;
+  shortLabel: string;
   badge?: number;
   icon: React.ReactNode;
-  section?: string;
+  groupEnd?: boolean; // renders a divider after this item
 }
 
 interface SidebarProps {
@@ -17,10 +17,11 @@ interface SidebarProps {
 }
 
 const navItems: NavItem[] = [
+  // ── Principal ─────────────────────────────
   {
     id: 'home',
-    section: 'Principal',
     label: 'Inicio',
+    shortLabel: 'Inicio',
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   {
     id: 'inventory',
     label: 'Inventario',
+    shortLabel: 'Stock',
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -39,50 +41,22 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    id: 'orders',
-    label: 'Pedidos',
-    badge: 3,
+    id: 'sales',
+    label: 'Venta',
+    shortLabel: 'Venta',
+    groupEnd: true,
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
   },
-  {
-    id: 'products',
-    label: 'Productos',
-    icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'suppliers',
-    section: 'Gestión',
-    label: 'Proveedores',
-    icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'customers',
-    label: 'Clientes',
-    icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    ),
-  },
+  // ── Análisis ──────────────────────────────
   {
     id: 'reports',
     label: 'Reportes',
+    shortLabel: 'Reportes',
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -91,15 +65,37 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    id: 'settings',
-    section: 'Sistema',
-    label: 'Configuración',
+    id: 'stats',
+    label: 'Estadísticas',
+    shortLabel: 'Stats',
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'users',
+    label: 'Gestión de usuarios',
+    shortLabel: 'Usuarios',
+    groupEnd: true,
+    icon: (
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  // ── DEV ───────────────────────────────────
+  {
+    id: 'dev',
+    label: 'DEV',
+    shortLabel: 'Dev',
+    icon: (
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
       </svg>
     ),
   },
@@ -107,8 +103,6 @@ const navItems: NavItem[] = [
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  let lastSection = '';
 
   return (
     <>
@@ -136,68 +130,35 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
 
       <aside className={`sidebar${mobileOpen ? ' open' : ''}`} aria-label="Navegación principal">
 
-        {/* ── Brand ─────────────────────────────── */}
+        {/* ── Brand mark ───────────────────────── */}
         <div className="sidebar__brand">
-          <div className="sidebar__logo-wrap">
-            <img src={logo} alt="Abarrotes La Cuchilla" />
-          </div>
-          <div className="sidebar__brand-text">
-            <span className="sidebar__brand-name">La Cuchilla</span>
-            <span className="sidebar__brand-sub">Abarrotes</span>
+          <div className="sidebar__brand-mark">
+            <img src="/assets/logo.png" alt="LC" />
           </div>
         </div>
-
+        {/* ── Divider ───────────────────────── */}
+        <div className="sidebar__divider" />
         {/* ── Navigation ────────────────────────── */}
         <nav className="sidebar__nav" aria-label="Menú principal">
-          {navItems.map((item) => {
-            const showSection = item.section && item.section !== lastSection;
-            if (item.section) lastSection = item.section;
-
-            return (
-              <React.Fragment key={item.id}>
-                {showSection && (
-                  <span className="sidebar__section-label">{item.section}</span>
+          {navItems.map((item) => (
+            <React.Fragment key={item.id}>
+              <button
+                id={`nav-${item.id}`}
+                className={`sidebar__item${activePage === item.id ? ' active' : ''}`}
+                onClick={() => { onNavigate(item.id); setMobileOpen(false); }}
+                aria-current={activePage === item.id ? 'page' : undefined}
+                title={item.label}
+              >
+                <span className="sidebar__item-icon">{item.icon}</span>
+                <span className="sidebar__item-label">{item.shortLabel}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="sidebar__item-badge">{item.badge}</span>
                 )}
-                <button
-                  id={`nav-${item.id}`}
-                  className={`sidebar__item${activePage === item.id ? ' active' : ''}`}
-                  onClick={() => { onNavigate(item.id); setMobileOpen(false); }}
-                  aria-current={activePage === item.id ? 'page' : undefined}
-                >
-                  <span className="sidebar__item-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="sidebar__item-badge">{item.badge}</span>
-                  )}
-                </button>
-              </React.Fragment>
-            );
-          })}
+              </button>
+              {item.groupEnd && <div className="sidebar__divider" />}
+            </React.Fragment>
+          ))}
         </nav>
-
-        <div className="sidebar__divider" />
-
-        {/* ── Footer / User ──────────────────────── */}
-        <div className="sidebar__footer">
-          <div className="sidebar__user" role="button" tabIndex={0} aria-label="Perfil de usuario">
-            <div className="sidebar__avatar">AD</div>
-            <div className="sidebar__user-info">
-              <span className="sidebar__user-name">Administrador</span>
-              <span className="sidebar__user-role">Super Admin</span>
-            </div>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="rgba(244,240,235,0.4)" style={{ flexShrink: 0 }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-
-          <button className="sidebar__logout-btn" aria-label="Cerrar sesión">
-            <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Cerrar Sesión
-          </button>
-        </div>
       </aside>
     </>
   );

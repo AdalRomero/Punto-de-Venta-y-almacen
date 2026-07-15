@@ -1,17 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import Home from './home/Home';
+import '../css/sidebar.css';
 
-/* Page registry — agrega aquí tus páginas futuras */
+/* ─── User Profile Dropdown ──────────────────── */
+function UserMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Cierra al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="user-menu" ref={ref}>
+      {/* Trigger: avatar + nombre */}
+      <button
+        className="user-menu__trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Menú de usuario"
+        id="user-menu-btn"
+      >
+        <div className="user-menu__avatar">AD</div>
+        <span className="user-menu__trigger-name">Administrador</span>
+        <span className={`user-menu__trigger-chevron${open ? ' open' : ''}`}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div className="user-menu__dropdown" role="menu">
+          {/* Perfil */}
+          <div className="user-menu__profile">
+            <div className="user-menu__avatar">AD</div>
+            <div className="user-menu__profile-info">
+              <span className="user-menu__profile-name">Administrador</span>
+              <span className="user-menu__profile-role">Super Admin</span>
+              <span className="user-menu__profile-email">admin@cuchilla.com</span>
+            </div>
+          </div>
+
+          {/* Opciones */}
+          <div className="user-menu__items">
+            <button className="user-menu__item" role="menuitem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Mi Perfil
+            </button>
+            <button className="user-menu__item" role="menuitem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Configuración
+            </button>
+
+            <div className="user-menu__divider" />
+
+            <button className="user-menu__item user-menu__item--danger" role="menuitem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Page registry ──────────────────────────── */
 const pages: Record<string, React.ReactNode> = {
   home: <Home />,
   inventory: <Placeholder title="Inventario" />,
-  orders: <Placeholder title="Pedidos" />,
-  products: <Placeholder title="Productos" />,
-  suppliers: <Placeholder title="Proveedores" />,
-  customers: <Placeholder title="Clientes" />,
+  sales: <Placeholder title="Venta" />,
   reports: <Placeholder title="Reportes" />,
-  settings: <Placeholder title="Configuración" />,
+  stats: <Placeholder title="Estadísticas" />,
+  users: <Placeholder title="Gestión de usuarios" />,
+  dev: <Placeholder title="DEV" />,
 };
 
 function Placeholder({ title }: { title: string }) {
@@ -28,18 +111,18 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
+/* ─── AppLayout ──────────────────────────────── */
 export default function AppLayout() {
   const [activePage, setActivePage] = useState('home');
 
   const pageTitles: Record<string, string> = {
     home: 'Inicio',
     inventory: 'Inventario',
-    orders: 'Pedidos',
-    products: 'Productos',
-    suppliers: 'Proveedores',
-    customers: 'Clientes',
+    sales: 'Venta',
     reports: 'Reportes',
-    settings: 'Configuración',
+    stats: 'Estadísticas',
+    users: 'Gestión de usuarios',
+    dev: 'DEV',
   };
 
   return (
@@ -64,39 +147,27 @@ export default function AppLayout() {
           </button>
 
           {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13, color: 'var(--cuh-text-muted)' }}>La Cuchilla</span>
-            <span style={{ fontSize: 13, color: 'var(--cuh-text-light)' }}>/</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--cuh-text-dark)' }}>
+          <div className="app-breadcrumb">
+            <span className="app-breadcrumb__root">La Cuchilla</span>
+            <span className="app-breadcrumb__sep" />
+            <span className="app-breadcrumb__current">
               {pageTitles[activePage] ?? activePage}
             </span>
           </div>
 
           {/* Header right */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="app-header-actions">
             {/* Notifications */}
-            <button className="btn-icon" aria-label="Notificaciones" style={{ position: 'relative' }}>
+            <button className="btn-icon app-notif-btn" aria-label="Notificaciones">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span style={{
-                position: 'absolute', top: 4, right: 4,
-                width: 8, height: 8, borderRadius: '50%',
-                background: 'var(--cuh-primary)', border: '2px solid white'
-              }} />
+              <span className="app-notif-dot" />
             </button>
 
-            {/* Avatar */}
-            <div
-              className="avatar-initials sm"
-              role="button"
-              tabIndex={0}
-              aria-label="Perfil"
-              style={{ cursor: 'pointer' }}
-            >
-              AD
-            </div>
+            {/* User dropdown */}
+            <UserMenu />
           </div>
         </header>
 

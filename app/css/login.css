@@ -161,7 +161,7 @@
 .login-image-panel {
   position: relative;
   overflow: hidden;
-  background: var(--cuh-sidebar-bg);
+  background: #ffffff;
 }
 
 @media (min-width: 1024px) {

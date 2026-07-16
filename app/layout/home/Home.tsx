@@ -40,7 +40,10 @@ function getFormattedDate() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 }
-
+async function probarConexion() {
+  const rows = await window.api.query("SELECT 1 + 1 AS resultado");
+  console.log(rows); // [{ resultado: 2 }]
+}
 /* ─── Component ──────────────────────────────────── */
 export default function Home() {
   const greeting = getGreeting();
@@ -108,7 +111,7 @@ export default function Home() {
             </svg>
           </div>
 
-          <button className="btn home-hero-card__cta">
+          <button className="btn home-hero-card__cta" onClick={probarConexion}>
             Ver estadística completa
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />

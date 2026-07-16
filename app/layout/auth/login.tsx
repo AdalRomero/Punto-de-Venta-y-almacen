@@ -83,11 +83,11 @@ export default function Login({ onSuccess }: LoginProps) {
         {/* Left Panel: Imagen del logo, sin marcos ni bordes */}
         <div className="login-image-panel lg:col-span-5 relative flex flex-col justify-center items-center min-h-[260px] lg:min-h-0 lg:h-full select-none animate-slide-in-left overflow-hidden">
 
-          {/* Imagen del logo: cubre todo el panel sin deformarse */}
+          {/* Imagen del logo: se muestra completa sin recortes */}
           <img
             src={logo}
             alt="Abarrotes La Cuchilla"
-            className="absolute inset-0 w-full h-full object-cover object-center z-0"
+            className="absolute inset-0 w-full h-full object-contain object-center z-0"
           />
 
           {/* Tiñe el gris plano de la ilustración con los colores de marca */}

@@ -24,3 +24,13 @@ declare module '*.webp' {
   const src: string;
   export default src;
 }
+
+export { };
+
+declare global {
+  interface Window {
+    api: {
+      query: (sql: string, params?: any[]) => Promise<any>;
+    };
+  }
+}

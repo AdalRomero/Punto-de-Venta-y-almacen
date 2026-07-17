@@ -33,15 +33,23 @@ app.whenReady().then(async () => {
         await startMySQL();
 
         const mysql = await import("mysql2/promise");
+
+        // 1. Conexión temporal SIN base específica, solo para poder crearla
+        const setupConn = await mysql.createConnection({
+            host: "127.0.0.1",
+            port: 54320,
+            user: "root",
+        });
+        await setupConn.query("CREATE DATABASE IF NOT EXISTS la_cuchilla");
+        await setupConn.end();
+
+        // 2. Ahora sí, el pool normal ya con la base seleccionada
         pool = mysql.createPool({
             host: "127.0.0.1",
-            port: 3307,
+            port: 54320,
             user: "root",
-            database: "",
+            database: "la_cuchilla",
         });
-
-        await pool.query("CREATE DATABASE IF NOT EXISTS cuchilla_db");
-        await pool.query("USE cuchilla_db");
     } catch (err) {
         console.error("Fallo iniciando MySQL:", err);
     }

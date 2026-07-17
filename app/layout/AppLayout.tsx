@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import Home from './home/Home';
+import Inventory from './inventory/Inventory';
 import '../css/sidebar.css';
 
 /* ─── User Profile Dropdown ──────────────────── */
@@ -89,7 +90,7 @@ function UserMenu() {
 /* ─── Page registry ──────────────────────────── */
 const pages: Record<string, React.ReactNode> = {
   home: <Home />,
-  inventory: <Placeholder title="Inventario" />,
+  inventory: <Inventory />,
   sales: <Placeholder title="Venta" />,
   reports: <Placeholder title="Reportes" />,
   stats: <Placeholder title="Estadísticas" />,

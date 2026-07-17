@@ -41,10 +41,9 @@ export async function startMySQL(): Promise<void> {
     console.log("Arrancando MySQL...");
     mysqlProcess = spawn(mysqldPath, [
         `--datadir=${dataDir}`,
-        "--port=3307",
+        "--port=54320",
         "--bind-address=127.0.0.1",
     ]);
-
     mysqlProcess.stdout?.on("data", (d) => console.log(`[mysqld] ${d}`));
     mysqlProcess.stderr?.on("data", (d) => console.log(`[mysqld] ${d}`));
 
@@ -69,7 +68,7 @@ async function waitUntilReady(retries = 30): Promise<void> {
         try {
             const conn = await mysql.createConnection({
                 host: "127.0.0.1",
-                port: 3307,
+                port: 54320,
                 user: "root",
             });
             await conn.end();

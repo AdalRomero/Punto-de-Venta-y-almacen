@@ -57,7 +57,7 @@ async function startMySQL() {
 	console.log("Arrancando MySQL...");
 	mysqlProcess = spawn(mysqldPath, [
 		`--datadir=${dataDir}`,
-		"--port=3307",
+		"--port=54320",
 		"--bind-address=127.0.0.1"
 	]);
 	mysqlProcess.stdout?.on("data", (d) => console.log(`[mysqld] ${d}`));
@@ -79,7 +79,7 @@ async function waitUntilReady(retries = 30) {
 	for (let i = 0; i < retries; i++) try {
 		await (await mysql.createConnection({
 			host: "127.0.0.1",
-			port: 3307,
+			port: 54320,
 			user: "root"
 		})).end();
 		return;
@@ -110,14 +110,20 @@ async function createWindow() {
 app.whenReady().then(async () => {
 	try {
 		await startMySQL();
-		pool = (await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1))).createPool({
+		const mysql = await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1));
+		const setupConn = await mysql.createConnection({
 			host: "127.0.0.1",
-			port: 3307,
-			user: "root",
-			database: ""
+			port: 54320,
+			user: "root"
 		});
-		await pool.query("CREATE DATABASE IF NOT EXISTS cuchilla_db");
-		await pool.query("USE cuchilla_db");
+		await setupConn.query("CREATE DATABASE IF NOT EXISTS la_cuchilla");
+		await setupConn.end();
+		pool = mysql.createPool({
+			host: "127.0.0.1",
+			port: 54320,
+			user: "root",
+			database: "la_cuchilla"
+		});
 	} catch (err) {
 		console.error("Fallo iniciando MySQL:", err);
 	}

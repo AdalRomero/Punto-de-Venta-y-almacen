@@ -1,0 +1,453 @@
+/* =============================================
+   App Cuchilla — Detalle de Usuario
+   Usa las variables de index.css (--cuh-*).
+   Reutiliza clases de user.css (usr-badge-rol,
+   usr-rol-*, usr-card-status) para mantener
+   consistencia con la tarjeta/listado de usuarios.
+   ============================================= */
+
+/* =============================================
+   Encabezado de página
+   ============================================= */
+.dtu-page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.dtu-page-heading h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.dtu-page-heading p {
+    font-size: 13.5px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+.dtu-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* =============================================
+   Estado de carga / no encontrado
+   ============================================= */
+.dtu-state-message {
+    text-align: center;
+    padding-top: 80px;
+}
+
+.dtu-state-message svg {
+    color: var(--cuh-text-light);
+    margin-bottom: 16px;
+}
+
+.dtu-state-message h2 {
+    color: var(--cuh-text-dark);
+    margin: 0 0 6px;
+}
+
+.dtu-state-message p {
+    color: var(--cuh-text-muted);
+    margin: 0 0 20px;
+}
+
+/* =============================================
+   Grid principal (perfil | contacto + permisos)
+   ============================================= */
+.dtu-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.dtu-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+}
+
+/* La última tarjeta de cada columna absorbe el espacio sobrante,
+   así ambas columnas terminan a la misma altura (parejas) sin
+   importar que una tenga más o menos contenido. */
+.dtu-col>.dtu-card:last-child {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =============================================
+   Tarjetas con acento de color (reemplaza
+   card-context / context-* de otras apps)
+   ============================================= */
+.dtu-card {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-left: 3px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    padding: 20px;
+    box-shadow: var(--cuh-shadow-sm);
+}
+
+.dtu-card.is-success {
+    border-left-color: var(--cuh-success);
+}
+
+.dtu-card.is-info {
+    border-left-color: var(--cuh-info);
+}
+
+.dtu-card.is-warning {
+    border-left-color: var(--cuh-warning);
+}
+
+.dtu-card.is-danger {
+    border-left-color: var(--cuh-danger);
+}
+
+.dtu-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.dtu-card-title svg {
+    color: var(--cuh-primary);
+}
+
+.dtu-card-title h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+}
+
+/* =============================================
+   Cabecera de perfil: avatar + nombre + rol
+   ============================================= */
+.dtu-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 20px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--cuh-border-light);
+}
+
+.dtu-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: white;
+    background: var(--usr-rol-color, var(--cuh-primary));
+    box-shadow: 0 4px 14px rgba(var(--cuh-primary-rgb), 0.25);
+    flex-shrink: 0;
+}
+
+.dtu-profile-name {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+}
+
+.dtu-profile-username {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.dtu-profile-rol {
+    margin-top: 8px;
+}
+
+.dtu-form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* =============================================
+   Grid de 2 columnas para los campos de perfil
+   (lectura y edición), para que la tarjeta quede
+   más compacta y pareja con la columna vecina.
+   ============================================= */
+.dtu-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 16px;
+}
+
+.dtu-info-grid .dtu-form-group,
+.dtu-info-grid>div {
+    min-width: 0;
+}
+
+.dtu-info-span-2 {
+    grid-column: 1 / -1;
+}
+
+.dtu-info-grid .dtu-info-item {
+    margin-bottom: 0;
+}
+
+/* =============================================
+   Items de información (modo lectura)
+   ============================================= */
+.dtu-info-item {
+    margin-bottom: 14px;
+}
+
+.dtu-info-item:last-child {
+    margin-bottom: 0;
+}
+
+.dtu-info-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cuh-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+.dtu-info-value {
+    font-size: 14px;
+    color: var(--cuh-text-dark);
+    font-weight: 500;
+}
+
+/* =============================================
+   Datos de contacto (modo lectura)
+   ============================================= */
+.dtu-contact-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--cuh-bg);
+    border-radius: var(--cuh-radius);
+    margin-bottom: 10px;
+}
+
+.dtu-contact-row:last-child {
+    margin-bottom: 0;
+}
+
+.dtu-contact-row svg {
+    color: var(--cuh-text-light);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.dtu-contact-label {
+    font-size: 11px;
+    color: var(--cuh-text-muted);
+    margin-bottom: 2px;
+}
+
+.dtu-contact-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cuh-text-dark);
+}
+
+.dtu-lada-row {
+    display: flex;
+    gap: 8px;
+}
+
+.dtu-lada-row .dtu-lada-field {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.dtu-lada-row .dtu-tel-field {
+    flex: 1;
+}
+
+/* =============================================
+   Permisos
+   ============================================= */
+.dtu-permiso-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    background: var(--cuh-bg);
+    border-radius: var(--cuh-radius);
+    margin-bottom: 6px;
+}
+
+.dtu-permiso-row:last-child {
+    margin-bottom: 0;
+}
+
+.dtu-permiso-modulo {
+    font-size: 13px;
+    color: var(--cuh-text-dark);
+    font-weight: 600;
+}
+
+.dtu-permiso-nivel {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: right;
+}
+
+/* =============================================
+   Credenciales y acceso
+   ============================================= */
+.dtu-credenciales-text {
+    font-size: 13px;
+    color: var(--cuh-text-base);
+    line-height: 1.5;
+    margin: 0 0 18px;
+}
+
+.dtu-credenciales-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* =============================================
+   Actividad reciente
+   ============================================= */
+.dtu-activity-card {
+    margin-top: 16px;
+}
+
+.dtu-activity-desc {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    margin: 0 0 16px;
+}
+
+.dtu-activity-empty {
+    color: var(--cuh-text-muted);
+    font-size: 13px;
+}
+
+.dtu-activity-date {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cuh-text-dark);
+}
+
+.dtu-activity-time {
+    font-size: 12px;
+    color: var(--cuh-text-light);
+}
+
+.dtu-activity-heading {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cuh-text-base);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Badge chico junto a fecha/hora: en qué apartado (Personal,
+   Inventario, Ventas...) ocurrió el evento — mismos módulos que
+   se navegan desde el Sidebar / AppLayout. */
+.dtu-activity-entidad {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--cuh-primary);
+    background: var(--cuh-primary-light);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+/* =============================================
+   Paginación de Actividad Reciente (3 por página,
+   de la más nueva a la más vieja)
+   ============================================= */
+.dtu-activity-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.dtu-pagination-btn {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--cuh-border);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-base);
+    border-radius: var(--cuh-radius);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.dtu-pagination-btn:hover:not(:disabled):not(.active) {
+    background: var(--cuh-bg);
+}
+
+.dtu-pagination-btn.active {
+    background: var(--cuh-primary);
+    border-color: var(--cuh-primary);
+    color: white;
+    cursor: default;
+}
+
+.dtu-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.dtu-pagination-ellipsis {
+    color: var(--cuh-text-light);
+    font-size: 12.5px;
+    padding: 0 2px;
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+@media (max-width: 900px) {
+    .dtu-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .dtu-page-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .dtu-profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

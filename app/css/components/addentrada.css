@@ -1,0 +1,658 @@
+/* =============================================
+   App Cuchilla — Modal Registrar Entrada de Mercancía
+   Usa las variables de index.css (--cuh-*).
+   ============================================= */
+
+.aen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.aen-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 24, 20, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.aen-modal {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 900px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cuh-bg);
+    border-radius: 24px;
+    box-shadow: var(--cuh-shadow-lg);
+    overflow: hidden;
+}
+
+/* Header */
+.aen-header {
+    flex-shrink: 0;
+    background: var(--cuh-bg-white);
+    border-bottom: 1px solid var(--cuh-border-light);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.aen-header-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+}
+
+.aen-header-subtitle {
+    font-size: 13px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+.aen-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.aen-close-btn:hover:not(:disabled) {
+    background: var(--cuh-border-light);
+    color: var(--cuh-text-dark);
+}
+
+.aen-close-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Banners */
+.aen-error {
+    margin: 16px 28px 0;
+    padding: 12px 16px;
+    background: var(--cuh-danger-bg);
+    color: var(--cuh-danger-text);
+    border: 1px solid rgba(188, 87, 68, 0.25);
+    border-radius: var(--cuh-radius);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+/* Body */
+.aen-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+}
+
+.aen-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 820px) {
+    .aen-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.aen-section {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-sm);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+    height: 100%;
+}
+
+.aen-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14.5px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0 0 2px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cuh-border-light);
+}
+
+.aen-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.aen-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cuh-text-base);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aen-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.aen-input,
+.aen-select {
+    width: 100%;
+    padding: 10px 13px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius);
+    font-size: 13.5px;
+    color: var(--cuh-text-dark);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aen-input::placeholder {
+    color: var(--cuh-text-light);
+}
+
+.aen-input:focus,
+.aen-select:focus {
+    outline: none;
+    border-color: var(--cuh-primary);
+    background: var(--cuh-bg-white);
+    box-shadow: 0 0 0 3px rgba(var(--cuh-primary-rgb), 0.15);
+}
+
+.aen-input-money-wrap {
+    position: relative;
+}
+
+.aen-input-money-wrap .aen-currency {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.aen-input-money-wrap .aen-input {
+    padding-left: 26px;
+}
+
+.aen-input[type="number"]::-webkit-outer-spin-button,
+.aen-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.aen-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.aen-input.is-invalid {
+    border-color: var(--cuh-danger);
+    background: var(--cuh-danger-bg);
+}
+
+.aen-input.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(188, 87, 68, 0.15);
+}
+
+.aen-input.is-shake {
+    animation: aen-shake 0.4s ease;
+    border-color: var(--cuh-danger);
+}
+
+@keyframes aen-shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-6px);
+    }
+
+    40% {
+        transform: translateX(5px);
+    }
+
+    60% {
+        transform: translateX(-3px);
+    }
+
+    80% {
+        transform: translateX(2px);
+    }
+}
+
+.aen-desglose-field-error {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--cuh-danger);
+    margin: 0;
+}
+
+.aen-hint {
+    font-size: 11px;
+    color: var(--cuh-text-light);
+    margin: 0;
+}
+
+/* Último costo / info producto */
+.aen-info-box {
+    padding: 10px 12px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius);
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.aen-info-box strong {
+    color: var(--cuh-text-dark);
+}
+
+/* Alerta de variación de costo */
+.aen-cost-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--cuh-warning-bg);
+    border: 1px solid rgba(201, 138, 59, 0.3);
+    border-radius: var(--cuh-radius);
+}
+
+.aen-cost-alert-icon {
+    color: var(--cuh-warning);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.aen-cost-alert-title {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--cuh-warning-text);
+    margin: 0;
+}
+
+.aen-cost-alert-body {
+    font-size: 11.5px;
+    color: var(--cuh-warning-text);
+    margin: 3px 0 0;
+}
+
+/* Aviso caducidad */
+.aen-exp-alert {
+    padding: 10px 14px;
+    border-radius: var(--cuh-radius);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.aen-exp-alert.tone-green {
+    background: var(--cuh-success-bg);
+    color: var(--cuh-success-text);
+    border-color: rgba(79, 122, 70, 0.25);
+}
+
+.aen-exp-alert.tone-yellow {
+    background: var(--cuh-warning-bg);
+    color: var(--cuh-warning-text);
+    border-color: rgba(201, 138, 59, 0.25);
+}
+
+.aen-exp-alert.tone-red {
+    background: var(--cuh-danger-bg);
+    color: var(--cuh-danger-text);
+    border-color: rgba(188, 87, 68, 0.25);
+}
+
+.aen-exp-alert.tone-black {
+    background: var(--cuh-sidebar-bg);
+    color: white;
+}
+
+/* Escaneo de códigos alternos */
+.aen-scan-error {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--cuh-danger);
+    margin: -2px 0 0;
+}
+
+.aen-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.aen-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary-hover);
+    border: 1px solid rgba(var(--cuh-primary-rgb), 0.2);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.aen-tag.is-known {
+    background: var(--cuh-bg);
+    color: var(--cuh-text-base);
+    border-color: var(--cuh-border);
+}
+
+.aen-tag-badge {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--cuh-success);
+    color: white;
+}
+
+.aen-tag-badge.is-known {
+    background: var(--cuh-border);
+    color: var(--cuh-text-muted);
+}
+
+.aen-tag button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.aen-tag button:hover {
+    opacity: 1;
+}
+
+.aen-tag-empty {
+    font-size: 11px;
+    color: var(--cuh-text-light);
+    font-style: italic;
+}
+
+/* Calculadora de lote (full width) */
+.aen-calc-box {
+    margin-top: 20px;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--cuh-primary-50) 0%, var(--cuh-bg) 100%);
+    border: 1px solid rgba(var(--cuh-primary-rgb), 0.25);
+    border-radius: var(--cuh-radius-lg);
+}
+
+.aen-calc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--cuh-primary-hover);
+    margin-bottom: 14px;
+}
+
+.aen-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+@media (min-width: 640px) {
+    .aen-calc-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.aen-calc-cell {
+    background: var(--cuh-bg-white);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+}
+
+.aen-calc-cell.is-highlight {
+    background: var(--cuh-primary);
+}
+
+.aen-calc-cell-label {
+    font-size: 10.5px;
+    color: var(--cuh-text-muted);
+    margin: 0 0 3px;
+}
+
+.aen-calc-cell.is-highlight .aen-calc-cell-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.aen-calc-cell-value {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+}
+
+.aen-calc-cell.is-highlight .aen-calc-cell-value {
+    color: white;
+    font-size: 17px;
+}
+
+.aen-calc-cell-value.tone-success {
+    color: var(--cuh-success-text);
+}
+
+.aen-calc-cell-sub {
+    font-size: 9.5px;
+    color: var(--cuh-text-light);
+    margin: 2px 0 0;
+}
+
+.aen-calc-cell.is-highlight .aen-calc-cell-sub {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Footer */
+.aen-footer {
+    flex-shrink: 0;
+    background: var(--cuh-bg-white);
+    border-top: 1px solid var(--cuh-border-light);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Fila de la etiqueta + botón "+ más" (Costo de Adquisición) */
+.aen-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.aen-add-costo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px dashed var(--cuh-border);
+    background: transparent;
+    color: var(--cuh-primary-hover);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.aen-add-costo-btn:hover {
+    background: var(--cuh-primary-50);
+    border-color: var(--cuh-primary);
+}
+
+/* Desglose de costos (cuando hay más de una línea) */
+.aen-desglose {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aen-desglose-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.aen-desglose-row.is-active {
+    background: var(--cuh-primary-50);
+    border-color: rgba(var(--cuh-primary-rgb), 0.35);
+}
+
+.aen-desglose-fields {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    min-width: 0;
+}
+
+.aen-desglose-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.aen-desglose-field-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--cuh-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.aen-desglose-remove {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    margin-top: 21px;
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-light);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.aen-desglose-remove:hover {
+    background: var(--cuh-danger-bg);
+    color: var(--cuh-danger);
+}
+
+.aen-desglose-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    background: var(--cuh-primary-50);
+    border-radius: var(--cuh-radius);
+    font-size: 12px;
+    color: var(--cuh-primary-hover);
+}
+
+.aen-desglose-summary.is-off {
+    background: var(--cuh-warning-bg);
+    color: var(--cuh-warning-text);
+}
+
+.aen-desglose-summary strong {
+    font-size: 13.5px;
+}
+
+/* Panel único que encapsula TODAS las líneas de costo (desde la 1ra),
+   como un sidebar anidado dentro de la sección. Cuando hay más de 2
+   líneas, el contenido interno gana scroll propio de altura fija, así
+   el modal no crece sin límite; pero el contenedor visual siempre
+   agrupa todas las líneas por igual, nunca solo las "extra". */
+.aen-desglose-panel {
+    padding: 12px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aen-desglose-panel-scroll {
+    max-height: 170px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 4px;
+}
+
+.aen-desglose-panel-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.aen-desglose-panel-scroll::-webkit-scrollbar-thumb {
+    background: var(--cuh-border);
+    border-radius: 999px;
+}
+
+.aen-desglose-panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}

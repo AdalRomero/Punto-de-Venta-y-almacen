@@ -1,0 +1,316 @@
+/* =============================================
+   App Cuchilla — Estilos de Personal (Usuarios)
+   Usa las variables de index.css (--cuh-*).
+   Header de filtros + grupos (activos / historial)
+   + tarjetas de usuario con menú contextual.
+   ============================================= */
+
+/* =============================================
+   Encabezado de página
+   ============================================= */
+.usr-page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.usr-page-heading h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.usr-page-heading p {
+    font-size: 13.5px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+/* =============================================
+   Barra de filtros
+   ============================================= */
+.usr-filters-card {
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.usr-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.usr-search-wrap {
+    position: relative;
+}
+
+.usr-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    pointer-events: none;
+}
+
+.usr-search-input {
+    padding-left: 34px;
+}
+
+/* =============================================
+   Estado de carga / vacío
+   ============================================= */
+.usr-state-message {
+    padding: 40px;
+    text-align: center;
+    color: var(--cuh-text-muted);
+    font-size: 14px;
+}
+
+/* =============================================
+   Grupos de usuarios (activos / historial)
+   ============================================= */
+.usr-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.usr-group-historial {
+    border-top: 1px dashed var(--cuh-border);
+    padding-top: 20px;
+}
+
+.usr-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.usr-group-title svg {
+    color: var(--cuh-success);
+}
+
+.usr-group-historial .usr-group-title svg {
+    color: var(--cuh-text-muted);
+}
+
+.usr-group-title h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 0;
+}
+
+.usr-group-historial .usr-group-title h2 {
+    color: var(--cuh-text-muted);
+}
+
+.usr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.usr-grid.is-inactive {
+    opacity: 0.65;
+}
+
+/* =============================================
+   Scroll infinito — trigger
+   ============================================= */
+.usr-scroll-trigger {
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--cuh-text-light);
+    font-size: 12.5px;
+    margin-top: 6px;
+}
+
+/* =============================================
+   Tarjeta de usuario
+   ============================================= */
+.usr-card {
+    position: relative;
+    padding: 20px;
+    cursor: pointer;
+}
+
+.usr-card-menu-wrap {
+    position: absolute;
+    top: 12px;
+    right: 8px;
+}
+
+.usr-card-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 200;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius);
+    box-shadow: var(--cuh-shadow-lg);
+    min-width: 160px;
+    overflow: hidden;
+}
+
+.usr-card-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.usr-card-menu-item:hover {
+    background: var(--cuh-bg);
+}
+
+.usr-card-menu-item.is-primary {
+    color: var(--cuh-primary);
+}
+
+.usr-card-menu-item.is-danger {
+    color: var(--cuh-danger);
+}
+
+.usr-card-menu-divider {
+    height: 1px;
+    background: var(--cuh-border-light);
+}
+
+/* Cabecera: avatar + nombre + rol */
+.usr-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.usr-card-name {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    line-height: 1.25;
+}
+
+.usr-card-username {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.usr-card-rol {
+    margin-top: 5px;
+}
+
+/* Estado de credenciales (activo / sin acceso) */
+.usr-card-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-left: 6px;
+}
+
+.usr-card-status.is-active {
+    color: var(--cuh-success);
+}
+
+.usr-card-status.is-inactive {
+    color: var(--cuh-text-light);
+}
+
+.usr-card-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* Contacto */
+.usr-card-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--cuh-border-light);
+}
+
+.usr-card-contact-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--cuh-text-muted);
+}
+
+.usr-card-contact-row svg {
+    flex-shrink: 0;
+    color: var(--cuh-text-light);
+}
+
+.usr-card-contact-row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* =============================================
+   Colores de rol (Dev, Administrador, Cajero, Contador)
+   Usamos los tokens de estado/marca existentes para
+   mantener consistencia con el resto de la app.
+   ============================================= */
+.usr-rol-dev {
+    --usr-rol-color: var(--cuh-info);
+}
+
+.usr-rol-administrador {
+    --usr-rol-color: var(--cuh-primary);
+}
+
+.usr-rol-cajero {
+    --usr-rol-color: var(--cuh-secondary);
+}
+
+.usr-rol-contador {
+    --usr-rol-color: var(--cuh-warning);
+}
+
+.usr-badge-rol {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    color: var(--usr-rol-color, var(--cuh-primary));
+    background: color-mix(in srgb, var(--usr-rol-color, var(--cuh-primary)) 14%, white);
+}
+
+@media (max-width: 640px) {
+    .usr-page-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

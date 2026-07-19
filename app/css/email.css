@@ -1,0 +1,136 @@
+/* =============================================
+   App Cuchilla — CambiarCorreo
+   Pantalla para cambiar el correo de acceso de un
+   perfil que ya tiene credenciales activas.
+   Usa las variables de index.css (--cuh-*).
+   ============================================= */
+
+.cco-page {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--cuh-bg);
+    padding: 20px;
+}
+
+.cco-card {
+    max-width: 400px;
+    width: 100%;
+    padding: 40px;
+    box-shadow: var(--cuh-shadow-lg);
+    position: relative;
+}
+
+.cco-back-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    padding: 8px;
+}
+
+/* =============================================
+   Encabezado (icono + título + subtítulo)
+   ============================================= */
+.cco-header {
+    text-align: center;
+    margin-bottom: 32px;
+    margin-top: 16px;
+}
+
+.cco-icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: var(--cuh-primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    color: var(--cuh-primary);
+}
+
+.cco-title {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    letter-spacing: -0.01em;
+}
+
+.cco-subtitle {
+    color: var(--cuh-text-muted);
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cco-subtitle strong {
+    color: var(--cuh-text-base);
+}
+
+/* =============================================
+   Formulario
+   ============================================= */
+.cco-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.cco-alert {
+    padding: 12px;
+    background-color: var(--cuh-danger-bg);
+    color: var(--cuh-danger-text);
+    border-radius: var(--cuh-radius);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cco-alert svg {
+    flex-shrink: 0;
+}
+
+/* Inputs con icono a la izquierda (FormInput) */
+.cco-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.cco-input-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    pointer-events: none;
+    display: flex;
+}
+
+.cco-input {
+    padding-left: 38px;
+    width: 100%;
+}
+
+.cco-submit-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px 0;
+    justify-content: center;
+}
+
+.cco-cancel-btn {
+    width: 100%;
+    padding: 12px 0;
+    justify-content: center;
+    margin-top: -8px;
+}
+
+@media (max-width: 480px) {
+    .cco-card {
+        padding: 28px 20px;
+    }
+}

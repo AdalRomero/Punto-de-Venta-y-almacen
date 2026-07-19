@@ -21,6 +21,16 @@ const mysqlRoot = isPackaged
 const mysqldPath = path.join(mysqlRoot, "bin", "mysqld.exe");
 const dataDir = path.join(app.getPath("userData"), "mysql-data");
 
+// Carpeta con el .sql del esquema, empaquetada aparte de mysql-portable.
+// En dev: <proyecto>/db/esquema_la_cuchilla_final.sql
+// En .exe empaquetado: hay que declarar esta carpeta como extraResource
+// en la config de electron-builder para que exista process.resourcesPath/db.
+const dbResourcesDir = isPackaged
+    ? path.join(process.resourcesPath, "db")
+    : path.join(__dirname, "..", "db");
+
+const schemaSqlPath = path.join(dbResourcesDir, "esquema_la_cuchilla_final.sql");
+
 export async function startMySQL(): Promise<void> {
     const isFirstRun = !fs.existsSync(dataDir);
 
@@ -53,6 +63,83 @@ export async function startMySQL(): Promise<void> {
 
     await waitUntilReady();
     console.log("MySQL listo.");
+
+    await ensureSchemaLoaded();
+}
+
+/** Convierte el .sql pensado para el cliente `mysql` (con bloques
+ *  DELIMITER $$ para procedimientos/triggers) en texto que el driver
+ *  puede mandar de un jalón: quita las líneas "DELIMITER ..." y
+ *  cambia los "$$" de cierre por ";" — el servidor de MySQL sabe
+ *  encontrar el END que le corresponde a cada rutina sin necesidad
+ *  de un delimitador especial, eso solo lo necesita el cliente CLI. */
+function toExecutableSql(rawSqlFile: string): string {
+    return rawSqlFile
+        .split("\n")
+        .filter((line) => !/^\s*DELIMITER\s+/i.test(line))
+        .join("\n")
+        .replace(/\$\$/g, ";");
+}
+
+/** Si `la_cuchilla` está vacía (recién creada por el
+ *  CREATE DATABASE IF NOT EXISTS de main.ts), carga el esquema
+ *  empaquetado automáticamente. Si ya tiene tablas, no toca nada
+ *  — así no se pisa nada si la base ya se cargó antes. */
+async function ensureSchemaLoaded(): Promise<void> {
+    const mysql = await import("mysql2/promise");
+
+    // 1. Conexión sin base específica, solo para poder crearla si
+    //    no existe (antes esto vivía en main.ts; se movió aquí para
+    //    que quede en el mismo orden que lo necesita: crear -> probar
+    //    si está vacía -> cargar esquema).
+    const setupConn = await mysql.createConnection({
+        host: "127.0.0.1",
+        port: 54320,
+        user: "root",
+    });
+    await setupConn.query("CREATE DATABASE IF NOT EXISTS la_cuchilla");
+    await setupConn.end();
+
+    // 2. ¿Ya tiene tablas? Si sí, no la tocamos.
+    const probe = await mysql.createConnection({
+        host: "127.0.0.1",
+        port: 54320,
+        user: "root",
+        database: "la_cuchilla",
+    });
+    const [rows]: any = await probe.query(
+        "SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = 'la_cuchilla'"
+    );
+    await probe.end();
+
+    if (rows[0].total > 0) {
+        console.log(`la_cuchilla ya tiene ${rows[0].total} tablas/vistas, no se recarga el esquema.`);
+        return;
+    }
+
+    if (!fs.existsSync(schemaSqlPath)) {
+        throw new Error(
+            `la_cuchilla está vacía y no encontré el esquema para cargarlo solo: ${schemaSqlPath}`
+        );
+    }
+
+    console.log("la_cuchilla está vacía: cargando esquema_la_cuchilla_final.sql...");
+    const rawSql = fs.readFileSync(schemaSqlPath, "utf8");
+    const executableSql = toExecutableSql(rawSql);
+
+    const conn = await mysql.createConnection({
+        host: "127.0.0.1",
+        port: 54320,
+        user: "root",
+        database: "la_cuchilla",
+        multipleStatements: true, // necesario para correr todo el archivo de un jalón
+    });
+    try {
+        await conn.query(executableSql);
+        console.log("Esquema cargado correctamente.");
+    } finally {
+        await conn.end();
+    }
 }
 
 export function stopMySQL() {

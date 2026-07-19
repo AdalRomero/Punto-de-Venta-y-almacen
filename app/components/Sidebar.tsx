@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   {
     id: 'inventory',
     label: 'Inventario',
-    shortLabel: 'Stock',
+    shortLabel: 'Inventario',
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -54,6 +54,17 @@ const navItems: NavItem[] = [
   },
   // ── Análisis ──────────────────────────────
   {
+    id: 'catalogos',
+    label: 'Catalogos',
+    shortLabel: 'Catalogos',
+    icon: (
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    ),
+  },
+  {
     id: 'reports',
     label: 'Reportes',
     shortLabel: 'Reportes',
@@ -64,17 +75,7 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
-  {
-    id: 'stats',
-    label: 'Estadísticas',
-    shortLabel: 'Stats',
-    icon: (
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-      </svg>
-    ),
-  },
+
   {
     id: 'users',
     label: 'Gestión de usuarios',

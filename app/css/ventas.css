@@ -1,0 +1,467 @@
+/* =============================================
+   App Cuchilla — Estilos de Ventas (Punto de Venta)
+   Usa las variables de index.css (--cuh-*).
+   Layout de 2 columnas: catálogo (izq) + carrito (der).
+   ============================================= */
+
+/* =============================================
+   Layout general
+   ============================================= */
+.pos-page {
+    padding: 32px;
+    background: var(--cuh-bg);
+    min-height: 100vh;
+}
+
+.pos-container {
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.pos-header {
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pos-header-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.pos-header-subtitle {
+    font-size: 14px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+.pos-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .pos-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================
+   Columna izquierda — catálogo
+   ============================================= */
+.pos-catalog {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* =============================================
+   Barra de filtros — búsqueda + familia
+   Mismo patrón (card + grid + labels) que
+   usr-filters-card / usr-filters-grid en user.css.
+   ============================================= */
+.pos-filters-card {
+    padding: 16px;
+}
+
+.pos-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.pos-search-wrap {
+    position: relative;
+}
+
+.pos-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    pointer-events: none;
+}
+
+.pos-search-input {
+    padding-left: 34px;
+}
+
+/* Grid de tarjetas de producto */
+.pos-product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+}
+
+.pos-product-card {
+    position: relative;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+}
+
+.pos-product-card:hover {
+    border-color: var(--cuh-primary);
+    box-shadow: var(--cuh-shadow-md);
+    transform: translateY(-2px);
+}
+
+.pos-product-card:active {
+    transform: translateY(0);
+}
+
+.pos-product-card.is-out {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pos-product-card.is-out:hover {
+    border-color: var(--cuh-border);
+    box-shadow: none;
+    transform: none;
+}
+
+.pos-product-familia-badge {
+    align-self: flex-start;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cuh-primary);
+    background: var(--cuh-primary-50);
+    border-radius: 4px;
+    padding: 2px 7px;
+}
+
+.pos-product-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 34px;
+}
+
+.pos-product-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: auto;
+}
+
+.pos-product-price {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--cuh-primary-hover);
+}
+
+.pos-product-stock {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+}
+
+.pos-product-stock.tone-low {
+    color: var(--cuh-danger);
+}
+
+.pos-product-stock-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cuh-success);
+}
+
+.pos-product-stock.tone-low .pos-product-stock-dot {
+    background: var(--cuh-danger);
+}
+
+.pos-product-add-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--cuh-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.15s ease;
+}
+
+.pos-product-card:hover .pos-product-add-badge {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.pos-empty-catalog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--cuh-text-light);
+    grid-column: 1 / -1;
+}
+
+/* =============================================
+   Columna derecha — carrito / venta actual
+   ============================================= */
+.pos-cart {
+    position: sticky;
+    top: 24px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-md);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 64px);
+    overflow: hidden;
+}
+
+.pos-cart-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--cuh-border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pos-cart-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pos-cart-count {
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary);
+    padding: 2px 9px;
+    border-radius: 999px;
+}
+
+.pos-cart-clear {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--cuh-text-light);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.pos-cart-clear:hover {
+    color: var(--cuh-danger);
+}
+
+.pos-cart-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pos-cart-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 48px 20px;
+    color: var(--cuh-text-light);
+    text-align: center;
+}
+
+.pos-cart-empty-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+    margin: 0;
+}
+
+.pos-cart-empty-subtitle {
+    font-size: 11.5px;
+    margin: 0;
+}
+
+.pos-cart-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: var(--cuh-radius);
+    background: var(--cuh-bg);
+}
+
+.pos-cart-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pos-cart-item-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pos-cart-item-price {
+    font-size: 11px;
+    color: var(--cuh-text-muted);
+}
+
+.pos-cart-item-qty {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.pos-qty-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1px solid var(--cuh-border);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.pos-qty-btn:hover {
+    background: var(--cuh-border-light);
+}
+
+.pos-qty-value {
+    min-width: 20px;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+}
+
+.pos-cart-item-subtotal {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    min-width: 58px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.pos-cart-item-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: var(--cuh-text-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.pos-cart-item-remove:hover {
+    background: var(--cuh-danger-bg);
+    color: var(--cuh-danger);
+}
+
+/* Footer del carrito: totales + botón vender */
+.pos-cart-footer {
+    border-top: 1px solid var(--cuh-border-light);
+    padding: 16px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pos-cart-totals-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--cuh-text-muted);
+}
+
+.pos-cart-totals-row.is-total {
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    padding-top: 8px;
+    border-top: 1px dashed var(--cuh-border);
+}
+
+.pos-btn-sell {
+    width: 100%;
+    padding: 15px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, var(--cuh-primary) 0%, var(--cuh-primary-hover) 100%);
+    color: white;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 10px 24px -6px rgba(var(--cuh-primary-rgb), 0.5);
+    transition: all 0.2s ease;
+}
+
+.pos-btn-sell:hover:not(:disabled) {
+    box-shadow: 0 12px 28px -6px rgba(var(--cuh-primary-rgb), 0.65);
+    transform: translateY(-1px);
+}
+
+.pos-btn-sell:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}

@@ -148,28 +148,28 @@
 
 /* =============================================
    Toolbar — búsqueda + filtro de familia
+   Mismo patrón (card + grid + labels) que
+   usr-filters-card / usr-filters-grid en user.css.
    ============================================= */
-.inv-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    background: var(--cuh-bg-white);
-    border: 1px solid var(--cuh-border);
-    border-radius: var(--cuh-radius-lg);
+.inv-filters-card {
     padding: 16px;
     margin-bottom: 20px;
-    box-shadow: var(--cuh-shadow-sm);
+}
+
+.inv-filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: end;
 }
 
 .inv-search-wrap {
     position: relative;
-    flex: 1;
-    min-width: 220px;
 }
 
 .inv-search-icon {
     position: absolute;
-    left: 14px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--cuh-text-light);
@@ -177,31 +177,13 @@
 }
 
 .inv-search-input {
-    width: 100%;
-    padding: 11px 14px 11px 40px;
-    background: var(--cuh-bg);
-    border: 1px solid transparent;
-    border-radius: var(--cuh-radius-lg);
-    font-size: 14px;
-    color: var(--cuh-text-dark);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    padding-left: 34px;
 }
 
-.inv-search-input::placeholder {
-    color: var(--cuh-text-light);
-}
-
-.inv-search-input:focus {
-    outline: none;
-    border-color: var(--cuh-primary);
-    background: var(--cuh-bg-white);
-    box-shadow: 0 0 0 3px rgba(var(--cuh-primary-rgb), 0.15);
-}
-
-/* Dropdown de familia */
+/* Dropdown de familia — usa la apariencia de .form-select global;
+   aquí sólo se agrega lo necesario para el layout del botón + ícono. */
 .inv-familia-select {
     position: relative;
-    min-width: 220px;
 }
 
 .inv-familia-trigger {
@@ -210,19 +192,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 11px 16px;
-    background: var(--cuh-bg);
-    border: 1px solid transparent;
-    border-radius: var(--cuh-radius-lg);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--cuh-text-base);
     cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.inv-familia-trigger:hover {
-    background: var(--cuh-border-light);
 }
 
 .inv-familia-trigger .chevron {
@@ -671,11 +641,7 @@
         padding: 16px;
     }
 
-    .inv-toolbar {
-        flex-direction: column;
-    }
-
-    .inv-familia-select {
-        min-width: 100%;
+    .inv-filters-grid {
+        grid-template-columns: 1fr;
     }
 }

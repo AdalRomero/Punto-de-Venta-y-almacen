@@ -75,7 +75,7 @@
 }
 
 /* =============================================
-   TOP GRID — Hero card + Rate card
+   TOP GRID — Hero card + Acciones Rápidas
    ============================================= */
 .home-top-grid {
   display: grid;
@@ -88,11 +88,11 @@
 .home-hero-card {
   background: linear-gradient(150deg, var(--cuh-sidebar-bg) 0%, #202B1F 100%);
   border-radius: var(--cuh-radius-xl);
-  padding: 26px 28px 22px;
+  padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 22px;
+  gap: 12px;
   position: relative;
   overflow: hidden;
   color: #fff;
@@ -131,16 +131,16 @@
 
 .home-hero-card__eyebrow {
   display: block;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: rgba(246, 242, 233, 0.6);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .home-hero-card__value {
-  font-size: 42px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -150,15 +150,15 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #C9E4C0;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .home-hero-card__trend svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 .home-hero-card__trend .muted {
@@ -166,38 +166,8 @@
   color: rgba(246, 242, 233, 0.55);
 }
 
-.home-hero-card__mini-stats {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-top: 22px;
-}
-
-.home-hero-mini-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.home-hero-mini-stat__label {
-  font-size: 11px;
-  color: rgba(246, 242, 233, 0.55);
-  font-weight: 600;
-}
-
-.home-hero-mini-stat__value {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.home-hero-mini-stat__divider {
-  width: 1px;
-  height: 28px;
-  background: rgba(246, 242, 233, 0.15);
-}
-
 .home-hero-card__art {
-  width: 140px;
+  width: 76px;
   height: auto;
   flex-shrink: 0;
   display: none;
@@ -209,6 +179,47 @@
   }
 }
 
+.home-hero-card__chart {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 88px;
+}
+
+.home-hero-card__chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(246, 242, 233, 0.55);
+}
+
+.home-hero-card__chart-peak {
+  font-weight: 700;
+  color: #C9E4C0;
+}
+
+.home-hero-card__chart-svg {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.home-hero-card__chart-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(246, 242, 233, 0.4);
+}
+
 .home-hero-card__cta {
   position: relative;
   z-index: 1;
@@ -216,6 +227,8 @@
   background: var(--cuh-primary);
   color: #fff;
   border-color: var(--cuh-primary);
+  padding: 7px 12px;
+  font-size: 12.5px;
 }
 
 .home-hero-card__cta:hover {
@@ -223,167 +236,8 @@
   border-color: var(--cuh-primary-hover);
 }
 
-/* ─── Rate / performance card ─────────────────── */
-.home-rate-card {
-  background: linear-gradient(160deg, var(--cuh-primary-light) 0%, var(--cuh-primary-50) 100%);
-  border: 1px solid rgba(var(--cuh-primary-rgb), 0.18);
-  border-radius: var(--cuh-radius-xl);
-  padding: 22px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.home-rate-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--cuh-text-dark);
-}
-
-.home-rate-card__delta {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--cuh-success-text);
-  background: var(--cuh-success-bg);
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-
-.home-rate-card__gauge-wrap {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.home-rate-card__desc {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--cuh-text-muted);
-  margin: 0;
-}
-
-.home-rate-card__desc strong {
-  color: var(--cuh-text-dark);
-}
-
-/* Gauge (conic-gradient donut) */
-.gauge {
-  --gauge-pct: 0;
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: conic-gradient(
-    var(--cuh-primary) calc(var(--gauge-pct) * 3.6deg),
-    rgba(var(--cuh-primary-rgb), 0.16) 0deg
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-}
-
-.gauge__inner {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--cuh-bg-white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--cuh-shadow-sm);
-}
-
-.gauge__value {
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--cuh-text-dark);
-}
-
-.home-rate-card__tip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--cuh-bg-white);
-  border-radius: var(--cuh-radius);
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--cuh-text-base);
-  box-shadow: var(--cuh-shadow-sm);
-}
-
-.home-rate-card__tip-play {
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: var(--cuh-primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.home-rate-card__tip-play:hover {
-  background: var(--cuh-primary-hover);
-}
-
 /* =============================================
-   Low stock alert strip
-   ============================================= */
-.home-alert-strip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--cuh-warning-bg);
-  border: 1px solid rgba(201, 138, 59, 0.25);
-  border-radius: var(--cuh-radius-lg);
-  padding: 12px 16px;
-  font-size: 13px;
-  color: var(--cuh-warning-text);
-}
-
-.home-alert-strip__icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--cuh-bg-white);
-  color: var(--cuh-warning);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.home-alert-strip strong {
-  font-weight: 700;
-}
-
-.home-alert-strip__action {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--cuh-warning-text);
-  font-weight: 700;
-  font-size: 12.5px;
-  cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.home-alert-strip__action:hover {
-  text-decoration: underline;
-}
-
-/* =============================================
-   BOTTOM GRID — Finance / Performers / Zones
+   BOTTOM GRID — Finance / Alertas de stock / Actividad
    ============================================= */
 .home-bottom-grid {
   display: grid;
@@ -392,8 +246,8 @@
 }
 
 .home-finance-card,
-.home-performers-card,
-.home-zones-card {
+.home-alerts-card,
+.home-activity-card {
   background: var(--cuh-bg-white);
   border: 1px solid var(--cuh-border);
   border-radius: var(--cuh-radius-xl);
@@ -481,8 +335,23 @@
   text-transform: uppercase;
 }
 
-/* ─── Top performers ───────────────────────────── */
-.performer-row {
+/* ─── Alertas de inventario (bajo stock / agotado / caducado) ── */
+.home-alerts-card__list {
+  max-height: 168px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.home-alerts-card__list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.home-alerts-card__list::-webkit-scrollbar-thumb {
+  background: var(--cuh-border);
+  border-radius: 4px;
+}
+
+.stock-alert-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -490,26 +359,43 @@
   border-bottom: 1px solid var(--cuh-border-light);
 }
 
-.performer-row:first-of-type {
+.stock-alert-row:first-of-type {
   padding-top: 0;
 }
 
-.performer-row:last-child {
+.stock-alert-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.performer-row__avatar {
-  background: var(--cuh-secondary);
+.stock-alert-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.performer-row__info {
+.stock-alert-row__icon.low {
+  background: var(--cuh-warning-bg);
+  color: var(--cuh-warning);
+}
+
+.stock-alert-row__icon.out,
+.stock-alert-row__icon.expired {
+  background: var(--cuh-danger-bg, rgba(214, 88, 88, 0.12));
+  color: var(--cuh-danger);
+}
+
+.stock-alert-row__info {
   flex: 1;
   min-width: 0;
 }
 
-.performer-row__name {
-  font-size: 13.5px;
+.stock-alert-row__name {
+  font-size: 13px;
   font-weight: 600;
   color: var(--cuh-text-dark);
   white-space: nowrap;
@@ -517,103 +403,202 @@
   text-overflow: ellipsis;
 }
 
-.performer-row__status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.stock-alert-row__meta {
   font-size: 11.5px;
-  color: var(--cuh-text-light);
+  color: var(--cuh-text-muted);
   margin-top: 1px;
 }
 
-.performer-row__status.is-online {
-  color: var(--cuh-success-text);
+/* ─── Actividad reciente ───────────────────────── */
+.home-activity-card__list {
+  max-height: 168px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.performer-row__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--cuh-success);
-  flex-shrink: 0;
+.home-activity-card__list::-webkit-scrollbar {
+  width: 5px;
 }
 
-.performer-row__rating {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--cuh-warning);
-  flex-shrink: 0;
+.home-activity-card__list::-webkit-scrollbar-thumb {
+  background: var(--cuh-border);
+  border-radius: 4px;
 }
 
-/* ─── Zones ─────────────────────────────────────── */
-.zone-row {
+.home-activity-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--cuh-border-light);
 }
 
-.zone-row:first-of-type {
+.home-activity-row:first-of-type {
   padding-top: 0;
 }
 
-.zone-row:last-child {
+.home-activity-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
-.zone-row__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.home-activity__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--cuh-primary-light);
+  color: var(--cuh-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.zone-row__info {
+.home-activity__info {
   flex: 1;
   min-width: 0;
 }
 
-.zone-row__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.zone-row__name {
+.home-activity__name {
   font-size: 13px;
   font-weight: 600;
   color: var(--cuh-text-dark);
-}
-
-.zone-row__trend {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--cuh-success-text);
-}
-
-.zone-row__bar {
-  height: 5px;
-  border-radius: 4px;
-  background: var(--cuh-border-light);
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.zone-row__bar-fill {
-  height: 100%;
-  border-radius: 4px;
+.home-activity__meta {
+  font-size: 11.5px;
+  color: var(--cuh-text-muted);
+  margin-top: 1px;
 }
 
-.zone-row__pct {
+.home-activity__amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cuh-text-dark);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Badge de estado (reutilizado por Actividad y Alertas) ── */
+.home-status-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.home-status-badge.is-success {
+  color: var(--cuh-success-text);
+  background: var(--cuh-success-bg);
+}
+
+.home-status-badge.is-warning {
+  color: var(--cuh-warning-text);
+  background: var(--cuh-warning-bg);
+}
+
+.home-status-badge.is-danger {
+  color: var(--cuh-danger-text, var(--cuh-danger));
+  background: var(--cuh-danger-bg, rgba(214, 88, 88, 0.12));
+}
+
+/* =============================================
+   Acciones rápidas
+   ============================================= */
+.home-quick-card {
+  background: var(--cuh-bg-white);
+  border: 1px solid var(--cuh-border);
+  border-radius: var(--cuh-radius-xl);
+  padding: 20px;
+  box-shadow: var(--cuh-shadow-sm);
+}
+
+.home-quick-card--hero {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px;
+  flex: 1;
+}
+
+.home-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 12px;
+  border-radius: var(--cuh-radius);
+  background: var(--cuh-bg);
+  border: 1px solid var(--cuh-border-light);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.home-quick-btn:hover {
+  background: var(--cuh-primary-light);
+  border-color: rgba(var(--cuh-primary-rgb), 0.35);
+  box-shadow: var(--cuh-shadow-sm);
+}
+
+.home-quick-btn__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--cuh-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.home-quick-btn__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-quick-btn--success .home-quick-btn__icon {
+  background: var(--cuh-success);
+}
+
+.home-quick-btn--warning .home-quick-btn__icon {
+  background: var(--cuh-warning);
+}
+
+.home-quick-btn--info .home-quick-btn__icon {
+  background: var(--cuh-info);
+}
+
+.home-quick-btn--danger .home-quick-btn__icon {
+  background: var(--cuh-danger);
+}
+
+.home-quick-btn__label {
   font-size: 12.5px;
   font-weight: 700;
+  color: var(--cuh-text-dark);
+  line-height: 1.25;
+}
+
+.home-quick-btn__desc {
+  font-size: 11px;
+  font-weight: 500;
   color: var(--cuh-text-muted);
-  flex-shrink: 0;
+  line-height: 1.3;
 }
 
 /* =============================================
@@ -624,7 +609,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .home-zones-card {
+  .home-activity-card {
     grid-column: span 2;
   }
 }
@@ -640,7 +625,7 @@
     grid-template-columns: 1fr;
   }
 
-  .home-zones-card {
+  .home-activity-card {
     grid-column: span 1;
   }
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/Sidebar';
-import Home from './home/Home';
-import Inventory from './inventory/Inventory';
 import '../css/sidebar.css';
+import Sidebar from '../components/Sidebar';
+import Home from '../layout/home/home';
+import Inventory from './inventory/Inventory';
+import Ventas from './inventory/ventas';
+import Users from './users/users';
+import Catalogo from './catalogo/catalago';
 
 /* ─── User Profile Dropdown ──────────────────── */
 function UserMenu() {
@@ -91,10 +94,10 @@ function UserMenu() {
 const pages: Record<string, React.ReactNode> = {
   home: <Home />,
   inventory: <Inventory />,
-  sales: <Placeholder title="Venta" />,
+  sales: <Ventas />,
+  catalogos: <Catalogo />,
   reports: <Placeholder title="Reportes" />,
-  stats: <Placeholder title="Estadísticas" />,
-  users: <Placeholder title="Gestión de usuarios" />,
+  users: <Users />,
   dev: <Placeholder title="DEV" />,
 };
 
@@ -121,7 +124,7 @@ export default function AppLayout() {
     inventory: 'Inventario',
     sales: 'Venta',
     reports: 'Reportes',
-    stats: 'Estadísticas',
+    catalogos: 'Catalogos',
     users: 'Gestión de usuarios',
     dev: 'DEV',
   };

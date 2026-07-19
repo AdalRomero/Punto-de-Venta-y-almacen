@@ -1,0 +1,592 @@
+/* =============================================
+   App Cuchilla — Modal Agregar / Editar Producto
+   Usa las variables de index.css (--cuh-*).
+   ============================================= */
+
+.aip-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.aip-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 24, 20, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.aip-modal {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 960px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cuh-bg);
+    border-radius: 24px;
+    box-shadow: var(--cuh-shadow-lg);
+    overflow: hidden;
+}
+
+/* Header */
+.aip-header {
+    flex-shrink: 0;
+    background: var(--cuh-bg-white);
+    border-bottom: 1px solid var(--cuh-border-light);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.aip-header-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+}
+
+.aip-header-subtitle {
+    font-size: 13px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+.aip-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.aip-close-btn:hover:not(:disabled) {
+    background: var(--cuh-border-light);
+    color: var(--cuh-text-dark);
+}
+
+.aip-close-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Error banner */
+.aip-error {
+    margin: 16px 28px 0;
+    padding: 12px 16px;
+    background: var(--cuh-danger-bg);
+    color: var(--cuh-danger-text);
+    border: 1px solid rgba(188, 87, 68, 0.25);
+    border-radius: var(--cuh-radius);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+/* Body */
+.aip-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+}
+
+.aip-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .aip-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.aip-grid-2--mt {
+    margin-top: 20px;
+    align-items: stretch;
+}
+
+.aip-section {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-sm);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.aip-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14.5px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0 0 2px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cuh-border-light);
+}
+
+.aip-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Descripciones en lenguaje simple debajo de títulos de sección */
+.aip-section-desc {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    margin: -10px 0 4px;
+    line-height: 1.45;
+}
+
+/* Bloques de ayuda dentro de una sección (ej. Umbrales de Caducidad) */
+.aip-subhelp {
+    padding: 10px 12px;
+    background: var(--cuh-bg);
+    border: 1px dashed var(--cuh-border);
+    border-radius: var(--cuh-radius);
+}
+
+.aip-subhelp-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 0 0 4px;
+}
+
+.aip-subhelp-text {
+    font-size: 11.5px;
+    color: var(--cuh-text-muted);
+    margin: 0;
+    line-height: 1.45;
+}
+
+/* Ícono de ayuda con tooltip nativo (title) junto a títulos */
+.aip-calc-title-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cuh-success-text);
+    opacity: 0.6;
+    cursor: help;
+}
+
+.aip-calc-title-help:hover {
+    opacity: 1;
+}
+
+.aip-calc-desc {
+    font-size: 11px;
+    color: var(--cuh-text-muted);
+    margin: -6px 0 12px;
+    line-height: 1.4;
+}
+
+.aip-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cuh-text-base);
+}
+
+.aip-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.aip-row-2 .aip-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.aip-row-2 .aip-label {
+    min-height: 32px;
+    display: flex;
+    align-items: flex-end;
+    line-height: 1.25;
+}
+
+.aip-input,
+.aip-select,
+.aip-textarea {
+    width: 100%;
+    padding: 10px 13px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius);
+    font-size: 13.5px;
+    color: var(--cuh-text-dark);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aip-textarea {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 64px;
+}
+
+.aip-input::placeholder,
+.aip-textarea::placeholder {
+    color: var(--cuh-text-light);
+}
+
+.aip-input:focus,
+.aip-select:focus,
+.aip-textarea:focus {
+    outline: none;
+    border-color: var(--cuh-primary);
+    background: var(--cuh-bg-white);
+    box-shadow: 0 0 0 3px rgba(var(--cuh-primary-rgb), 0.15);
+}
+
+.aip-input-money-wrap {
+    position: relative;
+}
+
+.aip-input-money-wrap .aip-currency {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.aip-input-money-wrap .aip-input {
+    padding-left: 26px;
+}
+
+.aip-input[type="number"]::-webkit-outer-spin-button,
+.aip-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.aip-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.aip-hint {
+    font-size: 11px;
+    color: var(--cuh-text-light);
+    margin: 0;
+}
+
+/* Último costo badge */
+.aip-last-cost {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--cuh-primary-50);
+    border: 1px solid rgba(var(--cuh-primary-rgb), 0.2);
+    border-radius: var(--cuh-radius);
+}
+
+.aip-last-cost-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--cuh-bg-white);
+    color: var(--cuh-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.aip-last-cost-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cuh-primary-hover);
+    margin: 0;
+}
+
+.aip-last-cost-value {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--cuh-primary-hover);
+    margin: 0;
+}
+
+/* Umbrales — leyenda de colores */
+.aip-legend {
+    padding: 12px 14px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius);
+    margin-top: auto;
+}
+
+.aip-legend-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cuh-text-muted);
+    margin: 0 0 8px;
+}
+
+.aip-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--cuh-text-base);
+    padding: 3px 0;
+}
+
+.aip-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.aip-legend-dot.tone-green {
+    background: var(--cuh-success);
+}
+
+.aip-legend-dot.tone-yellow {
+    background: var(--cuh-warning);
+}
+
+.aip-legend-dot.tone-red {
+    background: var(--cuh-danger);
+}
+
+.aip-legend-dot.tone-black {
+    background: var(--cuh-sidebar-bg);
+}
+
+/* Códigos alternos */
+.aip-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.aip-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary-hover);
+    border: 1px solid rgba(var(--cuh-primary-rgb), 0.2);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.aip-tag button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.aip-tag button:hover {
+    opacity: 1;
+}
+
+.aip-tag-empty {
+    font-size: 11px;
+    color: var(--cuh-text-light);
+    font-style: italic;
+}
+
+/* Calculadora de precio sugerido */
+.aip-calc-box {
+    padding: 16px;
+    background: linear-gradient(135deg, var(--cuh-success-bg) 0%, var(--cuh-bg) 100%);
+    border: 1px solid rgba(79, 122, 70, 0.25);
+    border-radius: var(--cuh-radius-lg);
+    transition: opacity 0.15s ease;
+}
+
+.aip-calc-box.is-disabled {
+    opacity: 0.6;
+}
+
+.aip-calc-hint {
+    margin: 10px 0 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+    text-align: center;
+}
+
+.aip-calc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.aip-calc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--cuh-success-text);
+}
+
+.aip-calc-apply {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--cuh-success);
+    color: white;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.aip-calc-apply:hover {
+    filter: brightness(0.95);
+}
+
+.aip-calc-apply:disabled {
+    background: var(--cuh-border);
+    color: var(--cuh-text-light);
+    cursor: not-allowed;
+}
+
+.aip-calc-apply:disabled:hover {
+    filter: none;
+}
+
+.aip-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.aip-calc-cell {
+    background: var(--cuh-bg-white);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.aip-calc-cell-label {
+    font-size: 10.5px;
+    color: var(--cuh-text-muted);
+    margin: 0 0 3px;
+}
+
+.aip-calc-cell-value {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+}
+
+.aip-calc-cell-value.tone-success {
+    color: var(--cuh-success-text);
+}
+
+.aip-calc-cell-value.tone-warning {
+    color: var(--cuh-warning-text);
+}
+
+/* Toggle activo (solo edición) */
+.aip-active-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius);
+}
+
+.aip-active-toggle-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+}
+
+.aip-active-toggle-sub {
+    font-size: 11px;
+    color: var(--cuh-text-light);
+    margin: 2px 0 0;
+}
+
+.aip-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    border: none;
+    background: var(--cuh-border);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.aip-switch.is-on {
+    background: var(--cuh-success);
+}
+
+.aip-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.aip-switch.is-on .aip-switch-knob {
+    transform: translateX(18px);
+}
+
+/* Footer */
+.aip-footer {
+    flex-shrink: 0;
+    background: var(--cuh-bg-white);
+    border-top: 1px solid var(--cuh-border-light);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}

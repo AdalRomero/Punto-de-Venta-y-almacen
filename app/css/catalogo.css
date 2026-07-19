@@ -1,0 +1,485 @@
+/* =============================================
+   App La Cuchilla — Estilos de Catálogos
+   Usa las variables de index.css (--cuh-*) y las
+   clases globales .btn / .badge / .form-* / .data-table.
+   Aquí solo va lo ÚNICO de esta pantalla: tarjetas de
+   pestaña, tarjetas de alta, e historial de tasas
+   (impuestos / márgenes).
+   ============================================= */
+
+/* =============================================
+   Contenedor general
+   ============================================= */
+.cat-page {
+    padding: 32px;
+    background: var(--cuh-bg);
+    min-height: 100vh;
+}
+
+.cat-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* =============================================
+   Encabezado
+   ============================================= */
+.cat-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.cat-header-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.cat-header-subtitle {
+    font-size: 14px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+/* =============================================
+   Tarjetas de pestaña (Familias / Impuestos / Márgenes)
+   ============================================= */
+.cat-tabs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+@media (max-width: 768px) {
+    .cat-tabs-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cat-tab-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border-radius: var(--cuh-radius-lg);
+    border: 1px solid var(--cuh-border-light);
+    background: var(--cuh-bg-white);
+    box-shadow: var(--cuh-shadow-sm);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.cat-tab-card:hover {
+    border-color: var(--cuh-border);
+}
+
+.cat-tab-card.active {
+    border-color: var(--cuh-primary);
+    box-shadow: var(--cuh-shadow-md);
+}
+
+.cat-tab-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--cuh-bg);
+    color: var(--cuh-text-light);
+    transition: all 0.2s ease;
+}
+
+.cat-tab-card.active .cat-tab-icon {
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary);
+}
+
+.cat-tab-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+    margin: 0;
+}
+
+.cat-tab-count {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 2px 0 0;
+    line-height: 1.1;
+}
+
+.cat-tab-card.active .cat-tab-count {
+    color: var(--cuh-primary);
+}
+
+/* =============================================
+   Tarjeta de alta / edición
+   ============================================= */
+.cat-form-card {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-primary-light);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-sm);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.cat-form-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 0 0 18px;
+}
+
+.cat-form-title svg {
+    color: var(--cuh-primary);
+}
+
+.cat-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.cat-form-hint {
+    font-size: 12px;
+    color: var(--cuh-text-light);
+    margin: 10px 0 4px;
+    line-height: 1.4;
+}
+
+/* =============================================
+   Toolbar (buscador + botón agregar)
+   Usa .card (index.css) para el fondo/borde/sombra,
+   igual que el patrón de filtros de Inventario.
+   ============================================= */
+.cat-filters-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.cat-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 360px;
+}
+
+.cat-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cuh-text-light);
+    pointer-events: none;
+}
+
+.cat-search-input {
+    padding-left: 34px;
+}
+
+/* =============================================
+   Tabla
+   ============================================= */
+.cat-table-card {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-sm);
+    overflow: hidden;
+}
+
+.cat-table-scroll {
+    overflow-x: auto;
+}
+
+.cat-row-inactive {
+    opacity: 0.55;
+}
+
+.cat-cell-name {
+    font-weight: 600;
+    color: var(--cuh-text-dark);
+    font-size: 14px;
+}
+
+.cat-cell-sub {
+    font-size: 11.5px;
+    color: var(--cuh-text-light);
+    font-weight: 500;
+    margin-top: 1px;
+}
+
+.cat-digits-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--cuh-secondary-bg);
+    color: var(--cuh-secondary-text);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+/* Tasa vigente, con fecha desde cuándo aplica */
+.cat-rate-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cat-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary-hover);
+    font-weight: 700;
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.cat-rate-since {
+    font-size: 11.5px;
+    color: var(--cuh-text-light);
+}
+
+/* Toggle de estado activo/inactivo dentro de la tabla */
+.cat-status-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cat-status-toggle.is-active {
+    background: var(--cuh-success-bg);
+    color: var(--cuh-success-text);
+}
+
+.cat-status-toggle.is-active:hover {
+    background: var(--cuh-success);
+    color: white;
+}
+
+.cat-status-toggle.is-inactive {
+    background: var(--cuh-border-light);
+    color: var(--cuh-text-muted);
+}
+
+.cat-status-toggle.is-inactive:hover {
+    background: var(--cuh-border);
+}
+
+.cat-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* Anchos para inputs inline dentro de celdas de tabla */
+.cat-input-xs {
+    max-width: 90px;
+}
+
+.cat-input-md {
+    max-width: 240px;
+}
+
+/* =============================================
+   Fila expandible de historial de tasas
+   ============================================= */
+.cat-history-row td {
+    padding: 0;
+    background: var(--cuh-bg);
+}
+
+.cat-history-wrap {
+    padding: 16px 24px 20px;
+    animation: cat-fade-in 0.15s ease;
+}
+
+.cat-history-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cuh-text-muted);
+    margin: 0 0 10px;
+}
+
+.cat-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cat-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius);
+    font-size: 12.5px;
+    color: var(--cuh-text-base);
+}
+
+.cat-history-item.is-current {
+    border-color: var(--cuh-success);
+    background: var(--cuh-success-bg);
+}
+
+.cat-history-rate {
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    min-width: 56px;
+}
+
+.cat-history-item.is-current .cat-history-rate {
+    color: var(--cuh-success-text);
+}
+
+.cat-history-range {
+    color: var(--cuh-text-muted);
+    flex: 1;
+    text-align: right;
+}
+
+@keyframes cat-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================
+   Estado vacío
+   ============================================= */
+.cat-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 56px 24px;
+    text-align: center;
+}
+
+.cat-empty-state svg {
+    color: var(--cuh-border);
+}
+
+.cat-empty-state-title {
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+.cat-empty-state-subtitle {
+    font-size: 12.5px;
+    color: var(--cuh-text-light);
+    margin: 0;
+}
+
+/* =============================================
+   Toast simple (sin dependencias externas)
+   ============================================= */
+.cat-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-lg);
+    font-size: 13.5px;
+    font-weight: 600;
+    animation: cat-toast-in 0.2s ease;
+    max-width: 360px;
+}
+
+.cat-toast.tone-success {
+    background: var(--cuh-success);
+    color: white;
+}
+
+.cat-toast.tone-error {
+    background: var(--cuh-danger);
+    color: white;
+}
+
+@keyframes cat-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+@media (max-width: 768px) {
+    .cat-page {
+        padding: 16px;
+    }
+
+    .cat-form-card .form-grid-2,
+    .cat-form-card .form-grid-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .cat-history-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .cat-history-range {
+        text-align: left;
+    }
+}

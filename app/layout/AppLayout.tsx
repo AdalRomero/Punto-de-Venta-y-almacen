@@ -6,11 +6,42 @@ import Inventory from './inventory/Inventory';
 import Ventas from './inventory/ventas';
 import Users from './users/users';
 import Catalogo from './catalogo/catalago';
+import { useAuth } from '../../src/context/AuthContext';
+import type { Usuario } from '../../src/services/user.service';
+
+/* ─── Helpers de presentación ────────────────── */
+
+/** "Adal Rome" -> "AR". Cae a "?" si por lo que sea no hay nombre. */
+function iniciales(usuario: Usuario | null): string {
+  if (!usuario) return '?';
+  const a = usuario.nombres?.trim()?.[0] ?? '';
+  const b = usuario.apellido_paterno?.trim()?.[0] ?? '';
+  const combinado = `${a}${b}`.toUpperCase();
+  return combinado || '?';
+}
+
+function nombreCompleto(usuario: Usuario | null): string {
+  if (!usuario) return 'Invitado';
+  return [usuario.nombres, usuario.apellido_paterno].filter(Boolean).join(' ');
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  Dev: 'Desarrollador',
+  administrador: 'Super Admin',
+  cajero: 'Cajero',
+  contador: 'Contador',
+};
+
+function rolLegible(rol: string | undefined): string {
+  if (!rol) return '';
+  return ROLE_LABELS[rol] ?? rol;
+}
 
 /* ─── User Profile Dropdown ──────────────────── */
-function UserMenu() {
+function UserMenu({ onNavigateSettings }: { onNavigateSettings?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { usuario, cerrarSesion } = useAuth();
 
   // Cierra al hacer click fuera
   useEffect(() => {
@@ -23,6 +54,20 @@ function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const inic = iniciales(usuario);
+  const nombre = nombreCompleto(usuario);
+  const rol = rolLegible(usuario?.rol);
+  const correo = usuario?.correo_acceso || 'Sin correo';
+
+  const handleLogout = () => {
+    setOpen(false);
+    cerrarSesion();
+    // Si tu App.tsx maneja la ruta activa aparte del AuthContext
+    // (ej. showLogin/showApp), agrega aquí la navegación necesaria.
+    // Al quedar `usuario` en null, cualquier pantalla que dependa
+    // de isAuthenticated debería regresar sola al login.
+  };
+
   return (
     <div className="user-menu" ref={ref}>
       {/* Trigger: avatar + nombre */}
@@ -34,8 +79,8 @@ function UserMenu() {
         aria-label="Menú de usuario"
         id="user-menu-btn"
       >
-        <div className="user-menu__avatar">AD</div>
-        <span className="user-menu__trigger-name">Administrador</span>
+        <div className="user-menu__avatar">{inic}</div>
+        <span className="user-menu__trigger-name">{nombre}</span>
         <span className={`user-menu__trigger-chevron${open ? ' open' : ''}`}>
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -48,11 +93,11 @@ function UserMenu() {
         <div className="user-menu__dropdown" role="menu">
           {/* Perfil */}
           <div className="user-menu__profile">
-            <div className="user-menu__avatar">AD</div>
+            <div className="user-menu__avatar">{inic}</div>
             <div className="user-menu__profile-info">
-              <span className="user-menu__profile-name">Administrador</span>
-              <span className="user-menu__profile-role">Super Admin</span>
-              <span className="user-menu__profile-email">admin@cuchilla.com</span>
+              <span className="user-menu__profile-name">{nombre}</span>
+              <span className="user-menu__profile-role">{rol}</span>
+              <span className="user-menu__profile-email">{correo}</span>
             </div>
           </div>
 
@@ -65,7 +110,7 @@ function UserMenu() {
               </svg>
               Mi Perfil
             </button>
-            <button className="user-menu__item" role="menuitem">
+            <button className="user-menu__item" role="menuitem" onClick={() => { setOpen(false); onNavigateSettings?.(); }}>
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -76,7 +121,7 @@ function UserMenu() {
 
             <div className="user-menu__divider" />
 
-            <button className="user-menu__item user-menu__item--danger" role="menuitem">
+            <button className="user-menu__item user-menu__item--danger" role="menuitem" onClick={handleLogout}>
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

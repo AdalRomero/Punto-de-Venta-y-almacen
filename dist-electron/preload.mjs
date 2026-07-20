@@ -8,6 +8,10 @@ electron.contextBridge.exposeInMainWorld("api", {
 		electron.ipcRenderer.on("db:changed", listener);
 		return () => electron.ipcRenderer.removeListener("db:changed", listener);
 	},
+	auth: { login: (identifier, password) => electron.ipcRenderer.invoke("auth:login", {
+		identifier,
+		password
+	}) },
 	users: {
 		crear: (input) => electron.ipcRenderer.invoke("users:crear", input),
 		asignarCredenciales: (payload) => electron.ipcRenderer.invoke("users:asignarCredenciales", payload),

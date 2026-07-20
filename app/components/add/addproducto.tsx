@@ -48,6 +48,10 @@ export interface ProductoRow {
     meta_estanteria: number | null;
     activo: boolean;
     codigos_alternos?: CodigoAlternoRow[];
+    /** Último costo_compra_promedio registrado en Entrada para este
+     *  producto (NO el costo_referencia usado para el precio de venta).
+     *  null si el producto todavía no tiene ninguna entrada capturada. */
+    ultimo_costo_compra?: number | null;
 }
 
 /* Payload que se envía al guardar (INSERT/UPDATE de Producto +
@@ -404,24 +408,6 @@ export default function AddProducto({
                                     <span>Caducado</span>
                                 </div>
                             </div>
-
-                            {editProduct && (
-                                <div className="aip-active-toggle">
-                                    <div>
-                                        <div className="aip-active-toggle-label">Producto activo</div>
-                                        <p className="aip-active-toggle-sub">
-                                            Los productos inactivos no aparecen en Ventas
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className={`aip-switch${activo ? " is-on" : ""}`}
-                                        onClick={() => setActivo((a) => !a)}
-                                    >
-                                        <span className="aip-switch-knob" />
-                                    </button>
-                                </div>
-                            )}
                         </div>
 
                         {/* ── Costos y Precio ── */}

@@ -77,6 +77,63 @@ ipcMain.handle(
 );
 
 /* ============================================================
+   DOMINIO: AUTH (login)
+   El renderer manda texto plano por IPC (misma ruta de confianza
+   que ya usa users:crear para el alta); el hash NUNCA sale de acá.
+   Acepta indistintamente el correo de acceso (Credenciales.correo_acceso)
+   o el username interno (Perfil_Info.usuario) como identificador,
+   así el usuario entra con lo que le sea más cómodo.
+   ============================================================ */
+
+interface LoginPayload {
+    identifier: string;
+    password: string;
+}
+
+ipcMain.handle("auth:login", async (_event, payload: LoginPayload) => {
+    if (!pool) throw new Error("La base de datos no está lista todavía");
+
+    const identifier = (payload.identifier ?? "").trim();
+    const password = payload.password ?? "";
+
+    if (!identifier || !password) {
+        throw new Error("Correo/usuario y contraseña son obligatorios.");
+    }
+
+    // Un solo mensaje genérico para "no existe" y "contraseña mala":
+    // no hay que darle pistas a quien intenta adivinar si el
+    // correo/usuario existe o no.
+    const CREDENCIALES_INVALIDAS = "Correo/usuario o contraseña incorrectos.";
+
+    const [credRows]: any = await pool.query(
+        `SELECT c.password_hash, p.id_perfil_info
+         FROM Credenciales c
+         JOIN Perfil_Info p ON p.id_perfil_info = c.id_perfil_info
+         WHERE c.correo_acceso = ? OR p.usuario = ?
+         LIMIT 1`,
+        [identifier, identifier]
+    );
+
+    if (credRows.length === 0) {
+        throw new Error(CREDENCIALES_INVALIDAS);
+    }
+
+    const passwordOk = await bcrypt.compare(password, credRows[0].password_hash);
+    if (!passwordOk) {
+        throw new Error(CREDENCIALES_INVALIDAS);
+    }
+
+    // Ya autenticado: arma el mismo shape que usan users.tsx/
+    // detailsuser.tsx (v_usuarios), para que el renderer no tenga
+    // que pedirlo aparte justo después de iniciar sesión.
+    const [rows]: any = await pool.query(
+        "SELECT * FROM v_usuarios WHERE id_perfil_info = ?",
+        [credRows[0].id_perfil_info]
+    );
+    return rows[0];
+});
+
+/* ============================================================
    DOMINIO: USUARIOS (Perfil_Info + Credenciales + Contacto)
    No se exponen los procedimientos "en crudo" al renderer:
    sp_crear_usuario tiene un parámetro OUT (necesita una conexión

@@ -8,6 +8,7 @@ import { app } from "electron";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
 let mysqlProcess: ChildProcess | null = null;
 
 // process.resourcesPath solo existe cuando la app YA está empaquetada (.exe)

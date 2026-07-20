@@ -703,7 +703,9 @@ BEGIN
   WHERE mth.id_margenes = NEW.id_margenes AND mth.vigente_hasta IS NULL
   LIMIT 1;
 
-  SET NEW.costo_final = NEW.costo_referencia * (1 + COALESCE(v_margen, 0));
+  -- porcentaje se guarda "plano" (16 = 16%, no 0.16), por eso se
+  -- divide entre 100 antes de usarlo como multiplicador.
+  SET NEW.costo_final = NEW.costo_referencia * (1 + COALESCE(v_margen, 0) / 100);
 END$$
 
 -- Calcular costo final al actualizar producto: usa el margen
@@ -727,7 +729,9 @@ BEGIN
   JOIN Impuesto_Tasa_Historial ith ON ith.id_impuestos = pi.id_impuestos AND ith.vigente_hasta IS NULL
   WHERE pi.id_producto = NEW.id_producto AND pi.activo = TRUE;
 
-  SET NEW.costo_final = NEW.costo_referencia * (1 + COALESCE(v_margen, 0)) * (1 + COALESCE(v_impuesto_total, 0));
+  -- Mismo ajuste: porcentaje y su suma vienen "planos" (16, 32...),
+  -- se dividen entre 100 para usarlos como multiplicador.
+  SET NEW.costo_final = NEW.costo_referencia * (1 + COALESCE(v_margen, 0) / 100) * (1 + COALESCE(v_impuesto_total, 0) / 100);
 END$$
 
 CREATE TRIGGER tr_log_precio

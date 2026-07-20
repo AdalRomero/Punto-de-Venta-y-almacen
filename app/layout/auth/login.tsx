@@ -3,13 +3,15 @@ import FormInput from '../../components/FormInput';
 import PasswordInput from '../../components/Passwordinput';
 import { MailIcon, CheckIcon, ErrorIcon, SpinnerIcon, BrandMarkIcon } from '../../components/Icons';
 import logo from '../../../assets/logo.png';
+import { useAuth } from '../../../src/context/AuthContext.tsx';
+import type { Usuario } from '../../../src/services/user.service.ts';
 
 const t = {
   brandTag: 'LA CUCHILLA',
   title: 'Hola Usuario!',
   welcome: 'Te damos la bienvenida a LA CUCHILLA',
-  emailLabel: 'Correo Electrónico',
-  emailPlaceholder: 'ejemplo@cuchilla.com',
+  emailLabel: 'Correo o Usuario',
+  emailPlaceholder: 'ejemplo@cuchilla.com o tu usuario',
   passwordLabel: 'Contraseña',
   passwordPlaceholder: 'Ingresa tu contraseña',
   forgotPassword: '¿Olvidaste tu correo o contraseña?',
@@ -25,14 +27,21 @@ const t = {
 const inputPillBase = 'login-input-pill w-full pl-11 py-3 text-sm focus:outline-none';
 
 interface LoginProps {
-  onSuccess?: () => void;
+  onSuccess?: (usuario: Usuario) => void;
 }
 
 export default function Login({ onSuccess }: LoginProps) {
-  const [email, setEmail] = useState('');
+  // Un solo campo para correo de acceso o username: el backend
+  // (auth:login en main.ts) decide con cuál de los dos matchea.
+  const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  // iniciarSesion del contexto: hace la llamada IPC (igual que antes)
+  // Y ADEMÁS guarda el usuario en el AuthContext, para que AppLayout
+  // sepa quién entró y los demás services puedan leer su id.
+  const { iniciarSesion } = useAuth();
 
   const triggerToast = (type: 'success' | 'error' | 'info', message: string) => {
     setToast({ type, message });
@@ -41,20 +50,26 @@ export default function Login({ onSuccess }: LoginProps) {
     }, 4000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (isLoading) return;
+
+    if (!identificador || !password) {
       triggerToast('error', t.notificationErrorFields);
       return;
     }
+
     setIsLoading(true);
-    // Simular llamada a API
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const usuario = await iniciarSesion(identificador, password);
       triggerToast('success', t.notificationSuccess);
       // Redirigir al home después de que el toast sea visible
-      setTimeout(() => onSuccess?.(), 900);
-    }, 1500);
+      setTimeout(() => onSuccess?.(usuario), 900);
+    } catch (err) {
+      triggerToast('error', err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -122,14 +137,14 @@ export default function Login({ onSuccess }: LoginProps) {
             {/* Email/Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
 
-              {/* Campo de correo — pill */}
+              {/* Campo de correo o usuario — pill */}
               <FormInput
-                id="email"
-                type="email"
+                id="identificador"
+                type="text"
                 required
                 placeholder={t.emailPlaceholder}
-                value={email}
-                onChange={setEmail}
+                value={identificador}
+                onChange={setIdentificador}
                 className={`${inputPillBase} pr-5`}
                 wrapperClassName="relative"
                 iconLeft={

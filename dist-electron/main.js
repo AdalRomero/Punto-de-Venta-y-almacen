@@ -2080,6 +2080,22 @@ ipcMain.handle("db:execute", async (_event, sql, params = [], entity) => {
 	if (entity) mainWindow?.webContents.send("db:changed", entity);
 	return result;
 });
+ipcMain.handle("auth:login", async (_event, payload) => {
+	if (!pool) throw new Error("La base de datos no está lista todavía");
+	const identifier = (payload.identifier ?? "").trim();
+	const password = payload.password ?? "";
+	if (!identifier || !password) throw new Error("Correo/usuario y contraseña son obligatorios.");
+	const CREDENCIALES_INVALIDAS = "Correo/usuario o contraseña incorrectos.";
+	const [credRows] = await pool.query(`SELECT c.password_hash, p.id_perfil_info
+         FROM Credenciales c
+         JOIN Perfil_Info p ON p.id_perfil_info = c.id_perfil_info
+         WHERE c.correo_acceso = ? OR p.usuario = ?
+         LIMIT 1`, [identifier, identifier]);
+	if (credRows.length === 0) throw new Error(CREDENCIALES_INVALIDAS);
+	if (!await bcryptjs_default.compare(password, credRows[0].password_hash)) throw new Error(CREDENCIALES_INVALIDAS);
+	const [rows] = await pool.query("SELECT * FROM v_usuarios WHERE id_perfil_info = ?", [credRows[0].id_perfil_info]);
+	return rows[0];
+});
 ipcMain.handle("users:crear", async (_event, input) => {
 	if (!pool) throw new Error("La base de datos no está lista todavía");
 	const passwordHash = await bcryptjs_default.hash(input.password, 10);

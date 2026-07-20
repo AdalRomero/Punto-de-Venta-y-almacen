@@ -137,7 +137,9 @@ export default function AddEntrada({
     }
 
     const productoSeleccionado = productos.find((p) => p.id_producto === productoId);
-    const ultimoCosto = productoSeleccionado?.costo_referencia ?? null;
+    // Último costo de ADQUISICIÓN registrado (de Entrada), no costo_referencia
+    // (ese es el que se usa para calcular el precio de venta — cosas distintas).
+    const ultimoCosto = productoSeleccionado?.ultimo_costo_compra ?? null;
 
     // Reinicia y vuelve a disparar la clase de "shake" en la línea indicada,
     // aunque ya estuviera activa en el ciclo anterior (para que se note el

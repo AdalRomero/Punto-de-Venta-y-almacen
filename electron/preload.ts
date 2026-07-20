@@ -19,6 +19,15 @@ contextBridge.exposeInMainWorld("api", {
         return () => ipcRenderer.removeListener("db:changed", listener);
     },
 
+    // Dominio Auth: login. Acepta correo de acceso O username
+    // indistintamente; la verificación del password vive en main.ts,
+    // aquí solo se manda texto plano por el mismo canal de confianza
+    // que ya usa users.crear.
+    auth: {
+        login: (identifier: string, password: string) =>
+            ipcRenderer.invoke("auth:login", { identifier, password }),
+    },
+
     // Dominio Usuarios: acciones que necesitan hashear password o
     // leer un parámetro OUT, por eso no pasan por query/execute.
     users: {

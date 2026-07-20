@@ -16,7 +16,7 @@ import {
     usuarioDisponible,
     obtenerActividadUsuario,
 } from '../../../src/services/user.service.ts';
-import AsignarCredenciales from '../auth/Credentials.tsx';
+import AsignarCredenciales from '../auth/credentials.tsx';
 import CambiarCorreo from '../auth/email.tsx';
 import CambiarPassword from '../auth/password.tsx';
 import '../../css/detailsuser.css';
@@ -164,6 +164,11 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
     const [actividadTotal, setActividadTotal] = useState(0);
     const [actividadCargando, setActividadCargando] = useState(true);
     const [actividadError, setActividadError] = useState(false);
+    // Se incrementa cada vez que window.api.onChange avisa un cambio en
+    // "usuarios" (ver useEffect de abajo). Entra al arreglo de deps del
+    // efecto que trae la actividad para forzar un refetch sin depender
+    // de que cambie la página o el usuario mostrado.
+    const [actividadRefreshKey, setActividadRefreshKey] = useState(0);
 
     // Si el detalle se reutiliza para ver a otro usuario, arranca de nuevo
     // en la página 1 en vez de arrastrar la página del usuario anterior.
@@ -192,7 +197,33 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
             });
 
         return () => { cancelado = true; };
-    }, [usuarioActual.id_perfil_info, actividadPagina]);
+    }, [usuarioActual.id_perfil_info, actividadPagina, actividadRefreshKey]);
+
+    // Actividad en "tiempo real": cada UPDATE/INSERT que pasa por
+    // window.api.execute(..., 'usuarios') dispara este evento en el
+    // proceso principal (incluyendo el INSERT a Bitacora de
+    // registrarBitacora). En vez de refrescar a mano después de cada
+    // handleGuardar/handleCambiarX, nos suscribimos una sola vez aquí:
+    // así también se refleja un cambio hecho desde otra ventana/sesión.
+    useEffect(() => {
+        let debounce: ReturnType<typeof setTimeout> | null = null;
+
+        const unsubscribe = window.api.onChange((entity) => {
+            if (entity !== 'usuarios') return;
+            // Un solo guardado puede disparar varios eventos seguidos
+            // (UPDATE Perfil_Info + UPDATE Contacto + INSERT Bitacora);
+            // se agrupan en un único refetch en vez de tres.
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(() => {
+                setActividadRefreshKey((k) => k + 1);
+            }, 200);
+        });
+
+        return () => {
+            unsubscribe();
+            if (debounce) clearTimeout(debounce);
+        };
+    }, []);
 
     const actividadTotalPaginas = Math.max(1, Math.ceil(actividadTotal / ACTIVIDAD_POR_PAGINA));
 

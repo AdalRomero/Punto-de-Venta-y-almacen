@@ -14,6 +14,8 @@
    para no mantener el tipo duplicado en 3 archivos.
    ============================================================ */
 
+import { SESSION_KEY } from '../context/AuthContext';
+
 /* ─── Tipos ───────────────────────────────────────────────── */
 
 // Mismo shape que ya usan users.tsx y detailsuser.tsx.
@@ -40,8 +42,11 @@ export interface Usuario {
 }
 
 // Fila cruda tal como la regresa `SELECT * FROM v_usuarios`
-// (columnas planas, no el objeto `contacto` anidado).
-interface UsuarioRow {
+// (columnas planas, no el objeto `contacto` anidado). Se exporta
+// para que auth.service.ts pueda reusar el mismo mapeo sin
+// duplicarlo (el login también arma un `Usuario` a partir de la
+// misma vista).
+export interface UsuarioRow {
     id_perfil_info: string;
     usuario: string;
     nombres: string;
@@ -107,7 +112,7 @@ export interface ActividadPagina {
 
 const ENTITY = "usuarios";
 
-function mapRow(row: UsuarioRow): Usuario {
+export function mapRow(row: UsuarioRow): Usuario {
     return {
         id_perfil_info: row.id_perfil_info,
         nombres: row.nombres,
@@ -126,6 +131,77 @@ function mapRow(row: UsuarioRow): Usuario {
         created: row.created,
         last_update: row.last_update,
     };
+}
+
+/* ─── Auditoría (Bitacora) ────────────────────────────────── */
+
+/** Quién está logueado ahora mismo, leído directo de sessionStorage
+ *  (AuthContext.tsx guarda ahí la sesión). Los *.service.ts no son
+ *  componentes, así que no pueden usar useAuth(); esta es la única
+ *  forma de saber el actor sin pedirle el id a cada caller. */
+function obtenerActorId(): string | null {
+    try {
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const sesion = JSON.parse(raw) as Usuario;
+        return sesion.id_perfil_info ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Inserta un registro en Bitacora. Nunca deja que un fallo aquí
+ *  tumbe la operación principal (crear/editar/etc.) — si el log
+ *  falla, solo se pierde ese renglón de "Actividad Reciente", no
+ *  el cambio real que ya se guardó. */
+async function registrarBitacora(
+    idPerfilInfo: string,
+    accion: string,
+    descripcion: string
+): Promise<void> {
+    try {
+        await window.api.execute(
+            `INSERT INTO Bitacora (id_perfil_info, id_actor, accion, descripcion)
+             VALUES (?, ?, ?, ?)`,
+            [idPerfilInfo, obtenerActorId(), accion, descripcion],
+            ENTITY
+        );
+    } catch {
+        // no-op: el registro real (perfil/contacto/credenciales) ya se
+        // guardó, no vale la pena romper la UI por la bitácora.
+    }
+}
+
+/** Trata null, undefined y cadena vacía como "sin valor" — sin esto,
+ *  comparar lo que regresa mapRow (siempre string, nunca null) contra
+ *  lo que manda un formulario (string | null) se ve como un cambio
+ *  aunque ambos signifiquen "vacío". */
+function normalizar(valor: unknown): unknown {
+    if (valor === null || valor === undefined || valor === '') return null;
+    return valor;
+}
+
+/** Compara campo por campo y arma el texto tipo
+ *  "rol: contador → cajero, correo: a@x.com → b@x.com" que pide
+ *  Bitacora.descripcion. Si nada cambió, regresa null — el caller
+ *  debe interpretar null como "no loguear nada", no como "loguear
+ *  con un texto genérico". */
+function describirCambios<T extends Record<string, unknown>>(
+    anterior: T,
+    nuevo: T,
+    etiquetas: Partial<Record<keyof T, string>>
+): string | null {
+    const cambios: string[] = [];
+    for (const key in etiquetas) {
+        const etiqueta = etiquetas[key];
+        if (!etiqueta) continue;
+        const valorAnterior = normalizar(anterior[key]);
+        const valorNuevo = normalizar(nuevo[key]);
+        if (valorAnterior !== valorNuevo) {
+            cambios.push(`${etiqueta}: ${valorAnterior ?? '—'} → ${valorNuevo ?? '—'}`);
+        }
+    }
+    return cambios.length ? cambios.join(', ') : null;
 }
 
 /* ─── Lecturas ────────────────────────────────────────────── */
@@ -207,7 +283,13 @@ export async function correoAccesoDisponible(correoAcceso: string): Promise<bool
 
 /** Alta completa (newusers.tsx). Devuelve el id_perfil_info nuevo. */
 export async function crearUsuario(input: NuevoUsuarioInput): Promise<string> {
-    return window.api.users.crear(input);
+    const idPerfilInfo = await window.api.users.crear(input);
+    await registrarBitacora(
+        idPerfilInfo,
+        'crear',
+        `Se creó el usuario "${input.usuario}" (rol: ${input.rol})`
+    );
+    return idPerfilInfo;
 }
 
 /** Edición de datos personales/rol (detailsuser.tsx -> "Guardar Cambios").
@@ -216,6 +298,8 @@ export async function actualizarPerfil(
     idPerfilInfo: string,
     data: ActualizarPerfilInput
 ): Promise<void> {
+    const anterior = await obtenerUsuario(idPerfilInfo);
+
     await window.api.execute(
         `UPDATE Perfil_Info
          SET usuario = ?, nombres = ?, apellido_paterno = ?, apellido_materno = ?, rol = ?
@@ -223,6 +307,20 @@ export async function actualizarPerfil(
         [data.usuario, data.nombres, data.apellido_paterno, data.apellido_materno, data.rol, idPerfilInfo],
         ENTITY
     );
+
+    const cambios = anterior
+        ? describirCambios(anterior, { ...anterior, ...data }, {
+            usuario: 'usuario',
+            nombres: 'nombres',
+            apellido_paterno: 'apellido paterno',
+            apellido_materno: 'apellido materno',
+            rol: 'rol',
+        })
+        : null;
+
+    if (cambios) {
+        await registrarBitacora(idPerfilInfo, 'editar_perfil', `Se actualizó el perfil (${cambios})`);
+    }
 }
 
 /** Edición de datos de contacto (detailsuser.tsx). La fila en
@@ -232,6 +330,8 @@ export async function actualizarContacto(
     idPerfilInfo: string,
     data: ActualizarContactoInput
 ): Promise<void> {
+    const anterior = await obtenerUsuario(idPerfilInfo);
+
     await window.api.execute(
         `UPDATE Contacto
          SET correo_personal = ?, lada = ?, telefono = ?, direccion = ?
@@ -239,6 +339,19 @@ export async function actualizarContacto(
         [data.correo_personal, data.lada, data.telefono, data.direccion, idPerfilInfo],
         ENTITY
     );
+
+    const cambios = anterior?.contacto
+        ? describirCambios(anterior.contacto, { ...anterior.contacto, ...data }, {
+            correo_personal: 'correo personal',
+            lada: 'lada',
+            telefono: 'teléfono',
+            direccion: 'dirección',
+        })
+        : null;
+
+    if (cambios) {
+        await registrarBitacora(idPerfilInfo, 'editar_contacto', `Se actualizó el contacto (${cambios})`);
+    }
 }
 
 /** "Agregar credenciales" en users.tsx (handleAgregarCredenciales)
@@ -253,6 +366,11 @@ export async function asignarCredenciales(
         correo_acceso: correoAcceso,
         password,
     });
+    await registrarBitacora(
+        idPerfilInfo,
+        'asignar_credenciales',
+        `Se asignaron credenciales de acceso (${correoAcceso})`
+    );
 }
 
 /** Cambiar la contraseña de alguien que YA tiene acceso activo
@@ -266,6 +384,7 @@ export async function cambiarPassword(
         id_perfil_info: idPerfilInfo,
         password: nuevaPassword,
     });
+    await registrarBitacora(idPerfilInfo, 'cambiar_password', 'Se cambió la contraseña');
 }
 
 /** Cambiar solo el correo de acceso (detailsuser.tsx -> handleCambiarCorreo).
@@ -274,15 +393,28 @@ export async function cambiarCorreoAcceso(
     idPerfilInfo: string,
     nuevoCorreoAcceso: string
 ): Promise<void> {
+    const anterior = await obtenerUsuario(idPerfilInfo);
+
     await window.api.execute(
         "UPDATE Credenciales SET correo_acceso = ? WHERE id_perfil_info = ?",
         [nuevoCorreoAcceso, idPerfilInfo],
         ENTITY
     );
+
+    const correoAnterior = normalizar(anterior?.correo_acceso);
+    const correoNuevo = normalizar(nuevoCorreoAcceso);
+
+    if (correoAnterior !== correoNuevo) {
+        const descripcion = correoAnterior
+            ? `Se cambió el correo de acceso (${correoAnterior} → ${correoNuevo ?? '—'})`
+            : `Se asignó el correo de acceso (${correoNuevo ?? '—'})`;
+        await registrarBitacora(idPerfilInfo, 'cambiar_correo', descripcion);
+    }
 }
 
 /** "Eliminar" en users.tsx (handleConfirmDelete): revoca el acceso,
  *  el perfil se conserva como historial. */
 export async function revocarCredenciales(idPerfilInfo: string): Promise<void> {
     await window.api.users.revocarCredenciales(idPerfilInfo);
+    await registrarBitacora(idPerfilInfo, 'revocar_credenciales', 'Se revocó el acceso');
 }

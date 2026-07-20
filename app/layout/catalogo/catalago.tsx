@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Layers,
     Receipt,
@@ -13,10 +13,13 @@ import {
     Search,
     CheckCircle2,
     XCircle,
+    Loader2,
 } from "lucide-react";
 // Ajusta esta ruta a donde vivan tus componentes de formulario en el proyecto.
 import FormInput from "../../components/FormInput";
 import "../../css/catalogo.css";
+import { useAuth } from "../../../src/context/AuthContext";
+import * as catalogosService from "../../../src/services/catalogos.service";
 
 /* ═══════════════════════════════════════════════════════════
    TIPOS
@@ -63,13 +66,6 @@ type ActiveTab = "familias" | "impuestos" | "margenes";
 type ToastState = { type: "success" | "error"; message: string } | null;
 
 /* ─── Helpers ──────────────────────────────────────────────── */
-const uid = () =>
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2);
-
-const nowISO = () => new Date().toISOString();
-
 const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("es-MX", {
         day: "2-digit",
@@ -167,73 +163,54 @@ const catHoverOut = (e: React.MouseEvent<HTMLButtonElement>) => {
     (e.currentTarget as HTMLButtonElement).style.color = "var(--cuh-text-muted)";
 };
 
-/* ─── Datos de ejemplo ─────────────────────────────────────
-   TODO: reemplazar por fetch a tu API cuando exista el backend
-   (GET /api/familias, GET /api/impuestos, GET /api/margenes). */
-const MOCK_FAMILIAS: Familia[] = [
-    { id_familia: uid(), nombre: "Harinas y Cereales", digitos: 1, created: "2025-02-10T00:00:00Z" },
-    { id_familia: uid(), nombre: "Abarrotes Generales", digitos: 2, created: "2025-02-10T00:00:00Z" },
-    { id_familia: uid(), nombre: "Lácteos y Refrigerados", digitos: 3, created: "2025-03-01T00:00:00Z" },
-    { id_familia: uid(), nombre: "Limpieza del Hogar", digitos: 4, created: "2025-03-15T00:00:00Z" },
-];
-
-const MOCK_IMPUESTOS: TasaCatalogItem[] = [
-    {
-        id: uid(),
-        nombre: "IVA",
-        activo: true,
-        created: "2025-01-05T00:00:00Z",
-        historial: [
-            { id_tasa: uid(), porcentaje: 16, vigente_desde: "2025-01-05T00:00:00Z", vigente_hasta: null },
-        ],
-    },
-    {
-        id: uid(),
-        nombre: "IEPS Bebidas Azucaradas",
-        activo: true,
-        created: "2025-01-05T00:00:00Z",
-        historial: [
-            { id_tasa: uid(), porcentaje: 6, vigente_desde: "2025-01-05T00:00:00Z", vigente_hasta: "2025-06-01T00:00:00Z" },
-            { id_tasa: uid(), porcentaje: 8, vigente_desde: "2025-06-01T00:00:00Z", vigente_hasta: null },
-        ],
-    },
-];
-
-const MOCK_MARGENES: TasaCatalogItem[] = [
-    {
-        id: uid(),
-        nombre: "Margen Estándar",
-        activo: true,
-        created: "2025-01-05T00:00:00Z",
-        historial: [
-            { id_tasa: uid(), porcentaje: 30, vigente_desde: "2025-01-05T00:00:00Z", vigente_hasta: null },
-        ],
-    },
-    {
-        id: uid(),
-        nombre: "Margen Promocional",
-        activo: false,
-        created: "2025-02-01T00:00:00Z",
-        historial: [
-            { id_tasa: uid(), porcentaje: 15, vigente_desde: "2025-02-01T00:00:00Z", vigente_hasta: null },
-        ],
-    },
-];
-
 /* ═══════════════════════════════════════════════════════════
    COMPONENTE PRINCIPAL
    ═══════════════════════════════════════════════════════════ */
 export default function CatalogosPage() {
+    const { usuario } = useAuth();
+    const registradoPor = usuario?.id_perfil_info ?? null;
+
     const [tab, setTab] = useState<ActiveTab>("familias");
-    const [familias, setFamilias] = useState<Familia[]>(MOCK_FAMILIAS);
-    const [impuestos, setImpuestos] = useState<TasaCatalogItem[]>(MOCK_IMPUESTOS);
-    const [margenes, setMargenes] = useState<TasaCatalogItem[]>(MOCK_MARGENES);
+    const [familias, setFamilias] = useState<Familia[]>([]);
+    const [impuestos, setImpuestos] = useState<TasaCatalogItem[]>([]);
+    const [margenes, setMargenes] = useState<TasaCatalogItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [toast, setToast] = useState<ToastState>(null);
 
     const showToast = (type: "success" | "error", message: string) => {
         setToast({ type, message });
         window.setTimeout(() => setToast(null), 3000);
     };
+
+    // Carga inicial: trae Familias, Impuestos y Márgenes en paralelo.
+    useEffect(() => {
+        let cancelado = false;
+
+        (async () => {
+            setIsLoading(true);
+            try {
+                const [f, i, m] = await Promise.all([
+                    catalogosService.listarFamilias(),
+                    catalogosService.listarImpuestos(),
+                    catalogosService.listarMargenes(),
+                ]);
+                if (cancelado) return;
+                setFamilias(f);
+                setImpuestos(i);
+                setMargenes(m);
+            } catch (err) {
+                if (!cancelado) {
+                    showToast("error", err instanceof Error ? err.message : "No se pudieron cargar los catálogos.");
+                }
+            } finally {
+                if (!cancelado) setIsLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelado = true;
+        };
+    }, []);
 
     const tabs: { key: ActiveTab; label: string; icon: React.ReactNode; count: number }[] = [
         { key: "familias", label: "Familias", icon: <Layers className="w-6 h-6" />, count: familias.length },
@@ -269,32 +246,55 @@ export default function CatalogosPage() {
                     ))}
                 </div>
 
-                {tab === "familias" && (
-                    <FamiliasTab familias={familias} setFamilias={setFamilias} showToast={showToast} />
-                )}
-                {tab === "impuestos" && (
-                    <TasaCatalogTab
-                        items={impuestos}
-                        setItems={setImpuestos}
-                        showToast={showToast}
-                        entityLabel="Impuesto"
-                        entityLabelPlural="impuestos"
-                        addLabel="Nuevo Impuesto"
-                        searchPlaceholder="Buscar impuesto..."
-                        icon={<Receipt className="w-4 h-4 text-emerald-600" />}
-                    />
-                )}
-                {tab === "margenes" && (
-                    <TasaCatalogTab
-                        items={margenes}
-                        setItems={setMargenes}
-                        showToast={showToast}
-                        entityLabel="Margen"
-                        entityLabelPlural="márgenes"
-                        addLabel="Nuevo Margen"
-                        searchPlaceholder="Buscar margen..."
-                        icon={<DollarSign className="w-4 h-4 text-indigo-600" />}
-                    />
+                {isLoading ? (
+                    <div className="cat-table-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", gap: 12 }}>
+                        <Loader2 className="w-6 h-6" style={{ animation: "spin 1s linear infinite" }} />
+                        <p className="cat-empty-state-subtitle">Cargando catálogos...</p>
+                    </div>
+                ) : (
+                    <>
+                        {tab === "familias" && (
+                            <FamiliasTab familias={familias} setFamilias={setFamilias} showToast={showToast} />
+                        )}
+                        {tab === "impuestos" && (
+                            <TasaCatalogTab
+                                items={impuestos}
+                                setItems={setImpuestos}
+                                showToast={showToast}
+                                entityLabel="Impuesto"
+                                entityLabelPlural="impuestos"
+                                addLabel="Nuevo Impuesto"
+                                searchPlaceholder="Buscar impuesto..."
+                                icon={<Receipt className="w-4 h-4 text-emerald-600" />}
+                                registradoPor={registradoPor}
+                                service={{
+                                    crear: catalogosService.crearImpuesto,
+                                    actualizarNombre: catalogosService.actualizarNombreImpuesto,
+                                    actualizarTasa: catalogosService.actualizarTasaImpuesto,
+                                    eliminar: catalogosService.eliminarImpuesto,
+                                }}
+                            />
+                        )}
+                        {tab === "margenes" && (
+                            <TasaCatalogTab
+                                items={margenes}
+                                setItems={setMargenes}
+                                showToast={showToast}
+                                entityLabel="Margen"
+                                entityLabelPlural="márgenes"
+                                addLabel="Nuevo Margen"
+                                searchPlaceholder="Buscar margen..."
+                                icon={<DollarSign className="w-4 h-4 text-indigo-600" />}
+                                registradoPor={registradoPor}
+                                service={{
+                                    crear: catalogosService.crearMargen,
+                                    actualizarNombre: catalogosService.actualizarNombreMargen,
+                                    actualizarTasa: catalogosService.actualizarTasaMargen,
+                                    eliminar: catalogosService.eliminarMargen,
+                                }}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 
@@ -333,7 +333,9 @@ function FamiliasTab({
 
     const filtered = familias.filter((f) => f.nombre.toLowerCase().includes(query.toLowerCase()));
 
-    const handleAdd = () => {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleAdd = async () => {
         if (!nombre.trim() || !digitos) {
             showToast("error", "El nombre de la familia es obligatorio.");
             return;
@@ -343,13 +345,19 @@ function FamiliasTab({
             showToast("error", `Ya existe una familia con el nombre "${nombre}".`);
             return;
         }
-        // TODO: reemplazar por POST /api/familias { nombre, digitos }
-        const nueva: Familia = { id_familia: uid(), nombre: nombre.trim(), digitos: Number(digitos), created: nowISO() };
-        setFamilias((prev) => [nueva, ...prev]);
-        showToast("success", `Familia "${nueva.nombre}" creada.`);
-        setNombre("");
-        setDigitos("2");
-        setShowAdd(false);
+        setIsSaving(true);
+        try {
+            const nueva = await catalogosService.crearFamilia(nombre.trim(), Number(digitos));
+            setFamilias((prev) => [nueva, ...prev]);
+            showToast("success", `Familia "${nueva.nombre}" creada.`);
+            setNombre("");
+            setDigitos("2");
+            setShowAdd(false);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo crear la familia.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const startEdit = (f: Familia) => {
@@ -358,7 +366,7 @@ function FamiliasTab({
         setEditDigitos(String(f.digitos));
     };
 
-    const handleSaveEdit = (f: Familia) => {
+    const handleSaveEdit = async (f: Familia) => {
         if (!editNombre.trim()) {
             showToast("error", "El nombre no puede estar vacío.");
             return;
@@ -374,24 +382,32 @@ function FamiliasTab({
             showToast("error", `Ya existe otra familia con el nombre "${editNombre}".`);
             return;
         }
-        // TODO: reemplazar por PATCH /api/familias/:id_familia
-        setFamilias((prev) =>
-            prev.map((item) =>
-                item.id_familia === f.id_familia
-                    ? { ...item, nombre: editNombre.trim(), digitos: Number(editDigitos) }
-                    : item
-            )
-        );
-        showToast("success", `Familia "${editNombre}" actualizada.`);
-        setEditId(null);
+        try {
+            await catalogosService.actualizarFamilia(f.id_familia, editNombre.trim(), Number(editDigitos));
+            setFamilias((prev) =>
+                prev.map((item) =>
+                    item.id_familia === f.id_familia
+                        ? { ...item, nombre: editNombre.trim(), digitos: Number(editDigitos) }
+                        : item
+                )
+            );
+            showToast("success", `Familia "${editNombre}" actualizada.`);
+            setEditId(null);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar la familia.");
+        }
     };
 
-    const handleDelete = (f: Familia) => {
+    const handleDelete = async (f: Familia) => {
         const confirmado = window.confirm(`¿Eliminar la familia "${f.nombre}"? Esta acción no se puede deshacer.`);
         if (!confirmado) return;
-        // TODO: reemplazar por DELETE /api/familias/:id_familia
-        setFamilias((prev) => prev.filter((item) => item.id_familia !== f.id_familia));
-        showToast("success", `Familia "${f.nombre}" eliminada.`);
+        try {
+            await catalogosService.eliminarFamilia(f.id_familia);
+            setFamilias((prev) => prev.filter((item) => item.id_familia !== f.id_familia));
+            showToast("success", `Familia "${f.nombre}" eliminada.`);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo eliminar la familia.");
+        }
     };
 
     return (
@@ -439,11 +455,11 @@ function FamiliasTab({
                         generar el código de sus productos y puede crecer más allá de 2 cifras si hace falta (100, 111, etc.).
                     </p>
                     <div className="cat-form-actions">
-                        <button onClick={() => setShowAdd(false)} className="btn btn-secondary btn-sm">
+                        <button onClick={() => setShowAdd(false)} className="btn btn-secondary btn-sm" disabled={isSaving}>
                             Cancelar
                         </button>
-                        <button onClick={handleAdd} className="btn btn-primary btn-sm">
-                            Guardar
+                        <button onClick={handleAdd} className="btn btn-primary btn-sm" disabled={isSaving}>
+                            {isSaving ? "Guardando..." : "Guardar"}
                         </button>
                     </div>
                 </div>
@@ -566,6 +582,13 @@ function FamiliasTab({
    y abre una nueva (igual que sp_actualizar_tasa_impuesto /
    sp_actualizar_tasa_margen), preservando el historial.
    ═══════════════════════════════════════════════════════════ */
+interface TasaCatalogService {
+    crear: (nombre: string, porcentajeInicial: number, registradoPor: string | null) => Promise<TasaCatalogItem>;
+    actualizarNombre: (id: string, nombre: string) => Promise<void>;
+    actualizarTasa: (id: string, nuevoPorcentaje: number, registradoPor: string | null) => Promise<TasaHistorial>;
+    eliminar: (id: string) => Promise<void>;
+}
+
 function TasaCatalogTab({
     items,
     setItems,
@@ -575,6 +598,8 @@ function TasaCatalogTab({
     addLabel,
     searchPlaceholder,
     icon,
+    service,
+    registradoPor,
 }: {
     items: TasaCatalogItem[];
     setItems: React.Dispatch<React.SetStateAction<TasaCatalogItem[]>>;
@@ -584,6 +609,8 @@ function TasaCatalogTab({
     addLabel: string;
     searchPlaceholder: string;
     icon: React.ReactNode;
+    service: TasaCatalogService;
+    registradoPor: string | null;
 }) {
     const [showAdd, setShowAdd] = useState(false);
     const [nombre, setNombre] = useState("");
@@ -600,9 +627,16 @@ function TasaCatalogTab({
 
     const filtered = items.filter((i) => i.nombre.toLowerCase().includes(query.toLowerCase()));
 
-    const handleAdd = () => {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleAdd = async () => {
         if (!nombre.trim() || !porcentaje) {
             showToast("error", `El nombre y el porcentaje son obligatorios para crear un ${entityLabel.toLowerCase()}.`);
+            return;
+        }
+        const valor = parseFloat(porcentaje);
+        if (Number.isNaN(valor) || valor < 0) {
+            showToast("error", "Ingresa un porcentaje válido.");
             return;
         }
         const duplicado = items.find((i) => i.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
@@ -610,19 +644,19 @@ function TasaCatalogTab({
             showToast("error", `Ya existe un ${entityLabel.toLowerCase()} con el nombre "${nombre}".`);
             return;
         }
-        // TODO: reemplazar por el stored procedure sp_crear_margen / equivalente de impuestos
-        const nuevo: TasaCatalogItem = {
-            id: uid(),
-            nombre: nombre.trim(),
-            activo: true,
-            created: nowISO(),
-            historial: [{ id_tasa: uid(), porcentaje: parseFloat(porcentaje), vigente_desde: nowISO(), vigente_hasta: null }],
-        };
-        setItems((prev) => [nuevo, ...prev]);
-        showToast("success", `${entityLabel} "${nuevo.nombre}" creado (${porcentaje}%).`);
-        setNombre("");
-        setPorcentaje("");
-        setShowAdd(false);
+        setIsSaving(true);
+        try {
+            const nuevo = await service.crear(nombre.trim(), valor, registradoPor);
+            setItems((prev) => [nuevo, ...prev]);
+            showToast("success", `${entityLabel} "${nuevo.nombre}" creado (${porcentaje}%).`);
+            setNombre("");
+            setPorcentaje("");
+            setShowAdd(false);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : `No se pudo crear el ${entityLabel.toLowerCase()}.`);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const startEdit = (item: TasaCatalogItem) => {
@@ -630,50 +664,61 @@ function TasaCatalogTab({
         setEditNombre(item.nombre);
     };
 
-    const handleSaveEdit = (item: TasaCatalogItem) => {
+    const handleSaveEdit = async (item: TasaCatalogItem) => {
         if (!editNombre.trim()) {
             showToast("error", "El nombre no puede estar vacío.");
             return;
         }
-        // TODO: reemplazar por PATCH /api/impuestos|margenes/:id (solo nombre)
-        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nombre: editNombre.trim() } : i)));
-        showToast("success", `${entityLabel} actualizado a "${editNombre}".`);
-        setEditId(null);
+        try {
+            await service.actualizarNombre(item.id, editNombre.trim());
+            setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nombre: editNombre.trim() } : i)));
+            showToast("success", `${entityLabel} actualizado a "${editNombre}".`);
+            setEditId(null);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar el nombre.");
+        }
     };
 
-    const handleSaveRate = (item: TasaCatalogItem) => {
+    const handleSaveRate = async (item: TasaCatalogItem) => {
         const value = parseFloat(newRate);
         if (Number.isNaN(value) || value < 0) {
             showToast("error", "Ingresa un porcentaje válido.");
             return;
         }
-        // TODO: reemplazar por CALL sp_actualizar_tasa_impuesto / sp_actualizar_tasa_margen
-        // (cierra la fila vigente con vigente_hasta = NOW() y abre una nueva).
-        const closedAt = nowISO();
-        setItems((prev) =>
-            prev.map((i) =>
-                i.id === item.id
-                    ? {
-                        ...i,
-                        historial: [
-                            ...i.historial.map((h) => (h.vigente_hasta === null ? { ...h, vigente_hasta: closedAt } : h)),
-                            { id_tasa: uid(), porcentaje: value, vigente_desde: closedAt, vigente_hasta: null },
-                        ],
-                    }
-                    : i
-            )
-        );
-        showToast("success", `Nueva tasa de "${item.nombre}" registrada: ${value}%.`);
-        setRateFormId(null);
-        setNewRate("");
+        try {
+            const nuevaFila = await service.actualizarTasa(item.id, value, registradoPor);
+            const closedAt = nuevaFila.vigente_desde;
+            setItems((prev) =>
+                prev.map((i) =>
+                    i.id === item.id
+                        ? {
+                            ...i,
+                            historial: [
+                                ...i.historial.map((h) => (h.vigente_hasta === null ? { ...h, vigente_hasta: closedAt } : h)),
+                                nuevaFila,
+                            ],
+                        }
+                        : i
+                )
+            );
+            showToast("success", `Nueva tasa de "${item.nombre}" registrada: ${value}%.`);
+            setRateFormId(null);
+            setNewRate("");
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar la tasa.");
+        }
     };
 
-    const handleDelete = (item: TasaCatalogItem) => {
+    const handleDelete = async (item: TasaCatalogItem) => {
         const confirmado = window.confirm(`¿Eliminar "${item.nombre}"? Esta acción no se puede deshacer.`);
         if (!confirmado) return;
-        // TODO: reemplazar por DELETE /api/impuestos|margenes/:id
-        setItems((prev) => prev.filter((i) => i.id !== item.id));
-        showToast("success", `${entityLabel} "${item.nombre}" eliminado.`);
+        try {
+            await service.eliminar(item.id);
+            setItems((prev) => prev.filter((i) => i.id !== item.id));
+            showToast("success", `${entityLabel} "${item.nombre}" eliminado.`);
+        } catch (err) {
+            showToast("error", err instanceof Error ? err.message : "No se pudo eliminar.");
+        }
     };
 
     return (
@@ -719,11 +764,11 @@ function TasaCatalogTab({
                         />
                     </div>
                     <div className="cat-form-actions">
-                        <button onClick={() => setShowAdd(false)} className="btn btn-secondary btn-sm">
+                        <button onClick={() => setShowAdd(false)} className="btn btn-secondary btn-sm" disabled={isSaving}>
                             Cancelar
                         </button>
-                        <button onClick={handleAdd} className="btn btn-primary btn-sm">
-                            Guardar
+                        <button onClick={handleAdd} className="btn btn-primary btn-sm" disabled={isSaving}>
+                            {isSaving ? "Guardando..." : "Guardar"}
                         </button>
                     </div>
                 </div>

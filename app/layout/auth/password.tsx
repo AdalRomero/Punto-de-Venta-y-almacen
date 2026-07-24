@@ -5,8 +5,6 @@ import PasswordInput from '../../components/Passwordinput';
 import { ErrorIcon, SpinnerIcon } from '../../components/Icons';
 
 import WarningModal from '../../components/modals/WarningModal';
-import SuccessModal from '../../components/modals/SuccessModal';
-import ErrorModal from '../../components/modals/ErrorModal';
 
 import {
     type Usuario,
@@ -31,9 +29,10 @@ interface CambiarPasswordProps {
     usuario: Usuario;
     onBack: () => void;
     onSuccess?: () => void;
+    showError?: (title: string, message: string) => void;
 }
 
-export default function CambiarPassword({ usuario, onBack, onSuccess }: CambiarPasswordProps) {
+export default function CambiarPassword({ usuario, onBack, onSuccess, showError }: CambiarPasswordProps) {
     // Estados del formulario
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,9 +41,6 @@ export default function CambiarPassword({ usuario, onBack, onSuccess }: CambiarP
 
     // Estados de control para los modales
     const [showWarning, setShowWarning] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [showError, setShowError] = useState(false);
-    const [apiErrorMsg, setApiErrorMsg] = useState('');
 
     // Resguardo: este flujo solo aplica a perfiles que ya tienen
     // credenciales activas (mismo guard que detailsuser.tsx).
@@ -74,10 +70,10 @@ export default function CambiarPassword({ usuario, onBack, onSuccess }: CambiarP
 
         try {
             await cambiarPassword(usuario.id_perfil_info, password);
-            setShowSuccess(true);
+            onSuccess?.();
+            onBack();
         } catch (err) {
-            setApiErrorMsg(err instanceof Error ? err.message : 'Ocurrió un error al actualizar la contraseña.');
-            setShowError(true);
+            showError?.('Error', err instanceof Error ? err.message : 'Ocurrió un error al actualizar la contraseña.');
         } finally {
             setLoading(false);
         }
@@ -159,26 +155,12 @@ export default function CambiarPassword({ usuario, onBack, onSuccess }: CambiarP
                 isOpen={showWarning}
                 onClose={() => setShowWarning(false)}
                 onConfirm={handleActualReset}
-                title="¿Cambiar contraseña al usuario?"
-                message="Esta acción reemplazará la contraseña actual del usuario inmediatamente."
-            />
-
-            <SuccessModal
-                isOpen={showSuccess}
-                onClose={() => {
-                    setShowSuccess(false);
-                    onSuccess?.();
-                    onBack();
-                }}
-                title="¡Contraseña Cambiada!"
-                message="La contraseña del usuario ha sido actualizada exitosamente."
-            />
-
-            <ErrorModal
-                isOpen={showError}
-                onClose={() => setShowError(false)}
-                title="Error de Actualización"
-                message={apiErrorMsg}
+                title="Confirmar Nueva Contraseña"
+                message={
+                    <>
+                        ¿Estás seguro de forzar el cambio de contraseña? El usuario será desconectado y deberá iniciar sesión con la nueva contraseña que acabas de definir.
+                    </>
+                }
             />
         </div>
     );

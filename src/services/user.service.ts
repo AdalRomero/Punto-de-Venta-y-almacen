@@ -211,7 +211,7 @@ function describirCambios<T extends Record<string, unknown>>(
  *  se manda ningún WHERE). */
 export async function listarUsuarios(): Promise<Usuario[]> {
     const rows: UsuarioRow[] = await window.api.query(
-        "SELECT * FROM v_usuarios ORDER BY nombres, apellido_paterno"
+        "SELECT * FROM v_usuarios ORDER BY created DESC"
     );
     return rows.map(mapRow);
 }

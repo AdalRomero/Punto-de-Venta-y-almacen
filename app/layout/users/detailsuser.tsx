@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import FormInput from '../../components/FormInput';
 import FormSelect from '../../components/FormSelect';
-import ErrorModal from '../../components/modals/ErrorModal';
-import SuccessModal from '../../components/modals/SuccessModal';
+// Modals removidos a favor de Toast
 import {
     type Usuario,
     type ActividadItem,
@@ -37,6 +36,9 @@ const entidadLabels: Record<string, string> = {
     producto: 'Inventario',
     venta: 'Ventas',
     cliente: 'Clientes',
+    catalogo: 'Catálogos',
+    devolucion: 'Devoluciones',
+    inventario: 'Inventario',
 };
 
 function formatearFechaHora(iso: string): { fecha: string; hora: string } {
@@ -66,6 +68,8 @@ function construirPaginas(total: number, actual: number): (number | '...')[] {
 interface DetalleUsuarioProps {
     usuario: Usuario;
     onBack: () => void;
+    showToast?: (type: 'success' | 'error', msg: string) => void;
+    showError?: (title: string, msg: string) => void;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -126,7 +130,7 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
 /* ─────────────────────────────────────────────────────────────
    Componente principal — sólo visual, sin lógica real de datos
 ──────────────────────────────────────────────────────────────── */
-export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps) {
+export default function DetalleUsuario({ usuario, onBack, showToast, showError }: DetalleUsuarioProps) {
     // Copia local: se actualiza tras cada guardado exitoso para que
     // el encabezado y las vistas de solo-lectura reflejen el cambio
     // de inmediato, sin esperar a que el padre vuelva a pasar props.
@@ -149,12 +153,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
         direccion: usuarioActual.contacto?.direccion ?? '',
     });
 
-    const [modalState, setModalState] = useState({
-        success: false,
-        error: false,
-        errorMessage: '',
-        successMessage: '',
-    });
+
 
     // Actividad reciente (tabla Bitacora): paginación real de 3 en 3,
     // de la más nueva a la más vieja (así ordena el índice
@@ -209,7 +208,8 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
         let debounce: ReturnType<typeof setTimeout> | null = null;
 
         const unsubscribe = window.api.onChange((entity) => {
-            if (entity !== 'usuarios') return;
+            const validEntities = ['usuarios', 'productos', 'familias', 'impuestos', 'margenes', 'ventas', 'devoluciones', 'inventario', 'catalogo'];
+            if (!validEntities.includes(entity)) return;
             // Un solo guardado puede disparar varios eventos seguidos
             // (UPDATE Perfil_Info + UPDATE Contacto + INSERT Bitacora);
             // se agrupan en un único refetch en vez de tres.
@@ -239,11 +239,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
         if (enviando) return;
 
         if (!formData.nombres.trim() || !formData.apellido_paterno.trim() || !formData.usuario.trim()) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: 'Nombres, Apellido Paterno y Usuario son obligatorios.',
-            });
+            showError?.('Campos incompletos', 'Nombres, Apellido Paterno y Usuario son obligatorios.');
             return;
         }
 
@@ -257,11 +253,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
             if (formData.usuario !== usuarioActual.usuario) {
                 const disponible = await usuarioDisponible(formData.usuario);
                 if (!disponible) {
-                    setModalState({
-                        ...modalState,
-                        error: true,
-                        errorMessage: 'Ese nombre de usuario ya está en uso por otro usuario.',
-                    });
+                    showError?.('Usuario no disponible', 'Ese nombre de usuario ya está en uso por otro usuario.');
                     return;
                 }
             }
@@ -295,7 +287,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                 },
             }));
             setEditando(false);
-            setModalState({ ...modalState, success: true, successMessage: 'Cambios registrados.' });
+            showToast?.('success', 'Cambios registrados.');
         } catch (err) {
             // Última línea de defensa por si dos ediciones concurrentes
             // dejan pasar el mismo username (usuario es UNIQUE en la BD).
@@ -303,15 +295,11 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                 err instanceof Error &&
                 (/ER_DUP_ENTRY/i.test(err.message) || /1062/.test(err.message) || /duplicate/i.test(err.message));
 
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: esDuplicado
-                    ? 'Ese nombre de usuario ya fue tomado por otro registro. Verifica e intenta de nuevo.'
-                    : err instanceof Error
-                        ? err.message
-                        : 'No se pudieron guardar los cambios.',
-            });
+            showError?.(esDuplicado ? 'Registro duplicado' : 'Error al guardar', esDuplicado
+                ? 'Ese nombre de usuario ya fue tomado por otro registro. Verifica e intenta de nuevo.'
+                : err instanceof Error
+                    ? err.message
+                    : 'No se pudieron guardar los cambios.');
         } finally {
             setEnviando(false);
         }
@@ -339,11 +327,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
     // solo reaccionamos a su onSuccess para refrescar el detalle.
     const handleCambiarContrasena = () => {
         if (!usuarioActual.auth_usuario) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: 'Este perfil no tiene un usuario de autenticación asociado en la base de datos.',
-            });
+            showError?.('Error', 'Este perfil no tiene un usuario de autenticación asociado en la base de datos.');
             return;
         }
         setVistaCredenciales('password');
@@ -351,11 +335,7 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
 
     const handleCambiarCorreo = () => {
         if (!usuarioActual.auth_usuario) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: 'Este perfil no tiene un usuario de autenticación asociado en la base de datos.',
-            });
+            showError?.('Error', 'Este perfil no tiene un usuario de autenticación asociado en la base de datos.');
             return;
         }
         setVistaCredenciales('correo');
@@ -379,8 +359,9 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                     // Optimista: refleja el acceso de inmediato en esta
                     // pantalla sin esperar al refresco vía db:changed.
                     setUsuarioActual((prev) => ({ ...prev, auth_usuario: correoAcceso }));
-                    setModalState({ ...modalState, success: true, successMessage: 'Credenciales asignadas. El usuario ya tiene acceso al sistema.' });
+                    showToast?.('success', 'Credenciales asignadas. El usuario ya tiene acceso al sistema.');
                 }}
+                showError={showError}
             />
         );
     }
@@ -392,8 +373,9 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                 onBack={() => setVistaCredenciales('ninguna')}
                 onSuccess={(nuevoCorreoAcceso) => {
                     setUsuarioActual((prev) => ({ ...prev, auth_usuario: nuevoCorreoAcceso }));
-                    setModalState({ ...modalState, success: true, successMessage: 'Correo de acceso actualizado.' });
+                    showToast?.('success', 'Correo de acceso actualizado.');
                 }}
+                showError={showError}
             />
         );
     }
@@ -404,8 +386,9 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                 usuario={usuarioActual}
                 onBack={() => setVistaCredenciales('ninguna')}
                 onSuccess={() => {
-                    setModalState({ ...modalState, success: true, successMessage: 'Contraseña actualizada.' });
+                    showToast?.('success', 'Contraseña actualizada.');
                 }}
+                showError={showError}
             />
         );
     }
@@ -681,19 +664,6 @@ export default function DetalleUsuario({ usuario, onBack }: DetalleUsuarioProps)
                     )}
                 </div>
             </div>
-
-            <ErrorModal
-                isOpen={modalState.error}
-                onClose={() => setModalState({ ...modalState, error: false })}
-                title="Error"
-                message={modalState.errorMessage}
-            />
-            <SuccessModal
-                isOpen={modalState.success}
-                onClose={() => setModalState({ ...modalState, success: false })}
-                title="¡Éxito!"
-                message={modalState.successMessage}
-            />
         </>
     );
 }

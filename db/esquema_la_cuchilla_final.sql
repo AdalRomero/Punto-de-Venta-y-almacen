@@ -142,12 +142,20 @@ CREATE INDEX idx_bitacora_perfil ON Bitacora(id_perfil_info, creado_en DESC);
 -- ============================================================
 -- CATÁLOGOS
 -- ============================================================
+-- `digitos` es el código de familia (Harinas=01, Pan=02...). Se
+-- guarda como INT a propósito: así "01" y "000001" son el MISMO
+-- valor (1) para MySQL y la UNIQUE de abajo los cacha como
+-- duplicado sin importar cuántos ceros a la izquierda haya
+-- escrito quien lo capturó. El CHECK bloquea el "00" (el código
+-- arranca en 01, nunca en 0).
 CREATE TABLE Familia (
   id_familia  CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   nombre      VARCHAR(150) NOT NULL,
-  digitos     INT NOT NULL DEFAULT 2,
+  digitos     INT NOT NULL,
   created     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT uq_familia_digitos UNIQUE (digitos),
+  CONSTRAINT chk_familia_digitos_min CHECK (digitos >= 1)
 ) ENGINE=InnoDB;
 
 -- Catálogo de impuestos. El % NO vive aquí (ver Impuesto_Tasa_
@@ -256,14 +264,21 @@ CREATE TABLE Historial_Precio (
   CONSTRAINT fk_hist_perfil FOREIGN KEY (editado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- codigo ya NO es UNIQUE: un mismo código de barras puede llegar a
+-- estar registrado en más de un producto (viene así de fábrica en
+-- algunos casos). Cuando eso pasa, Ventas no puede saber a cuál
+-- producto se refiere el escaneo, así que filtra el catálogo a esos
+-- productos y le pide al cajero elegir manualmente cuál agregar.
 CREATE TABLE Codigos_Alternos (
   id_codigo   CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_producto CHAR(36) NOT NULL,
-  codigo      VARCHAR(100) UNIQUE NOT NULL,
+  codigo      VARCHAR(100) NOT NULL,
   descripcion VARCHAR(255),
   created     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_codalt_producto FOREIGN KEY (id_producto) REFERENCES Producto(id_producto) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+CREATE INDEX idx_codalt_codigo ON Codigos_Alternos(codigo);
 
 -- ============================================================
 -- INVENTARIO / ENTRADA / LOTE
@@ -330,10 +345,19 @@ CREATE TABLE Lote (
   estado_lote         ENUM('activo','parcial','agotado','caducado') DEFAULT 'activo',
   unidad              ENUM('piezas','kilos') DEFAULT 'piezas',
   costo_compra        DECIMAL(12,2),
+  -- "Enterado": permite reconocer un lote ya vencido para que deje de
+  -- forzar el semáforo del producto a negro (VENCIDO) en la tabla de
+  -- Inventario; el lote sigue existiendo y sigue marcado como vencido
+  -- en el detalle, solo se "acusa recibo". Vive en la base (no en
+  -- localStorage) para que se vea igual en cualquier equipo/usuario.
+  enterado            BOOLEAN DEFAULT FALSE,
+  enterado_por        CHAR(36),
+  enterado_en         TIMESTAMP NULL,
   created             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_update         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_lote_producto FOREIGN KEY (id_producto) REFERENCES Producto(id_producto),
-  CONSTRAINT fk_lote_entrada FOREIGN KEY (id_entrada) REFERENCES Entrada(id_entrada)
+  CONSTRAINT fk_lote_entrada FOREIGN KEY (id_entrada) REFERENCES Entrada(id_entrada),
+  CONSTRAINT fk_lote_enterado_por FOREIGN KEY (enterado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -350,7 +374,7 @@ CREATE TABLE Venta (
 
 -- id_margenes / margen_nombre / margen_porcentaje_aplicado /
 -- costo_referencia_usado quedan CONGELADOS al momento de la venta
--- (los llena tr_vd_congelar_desglose). No se recalculan después
+-- (los llena tr_vd_congelar_margen). No se recalculan después
 -- aunque cambien las tasas — es el registro administrativo fijo.
 CREATE TABLE Venta_Detalle (
   id_vd                       CHAR(36) PRIMARY KEY DEFAULT (UUID()),
@@ -372,7 +396,7 @@ CREATE TABLE Venta_Detalle (
 
 -- Impuestos aplicados a una línea de venta, CONGELADOS (nombre y
 -- % ya fijos, independientes del catálogo). 0..N filas por línea.
--- Los llena tr_vd_congelar_desglose justo después del INSERT en
+-- Los llena tr_vd_congelar_impuestos justo después del INSERT en
 -- Venta_Detalle.
 CREATE TABLE Venta_Detalle_Impuesto (
   id_vdi              CHAR(36) PRIMARY KEY DEFAULT (UUID()),
@@ -411,6 +435,34 @@ CREATE TABLE Ajuste_Inventario (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+-- DEVOLUCIONES
+-- Modal de Devoluciones (devoluciones.tsx / devoluciones.service.ts).
+-- Se registra directo contra el producto (sin depender de Venta /
+-- Venta_Detalle: en un abarrotes nadie trae ticket ni folio). Si
+-- restock = TRUE, va ligada a un Ajuste_Inventario positivo vía
+-- id_ajuste; si es FALSE (producto dañado/caducado), id_ajuste
+-- queda NULL y el inventario no se toca.
+-- ============================================================
+CREATE TABLE Devolucion (
+  id_devolucion     CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+  id_producto       CHAR(36) NOT NULL,
+  cantidad_devuelta INT NOT NULL,
+  precio_unitario   DECIMAL(10,2) NOT NULL,
+  monto_devuelto    DECIMAL(10,2) AS (cantidad_devuelta * precio_unitario) STORED,
+  motivo            ENUM('producto_danado','producto_caducado','error_cobro','cliente_insatisfecho','otro') NOT NULL,
+  observaciones     VARCHAR(500),
+  accion            ENUM('reembolso','nota_credito','cambio') NOT NULL,
+  restock           BOOLEAN NOT NULL DEFAULT FALSE,
+  id_ajuste         CHAR(36),
+  registrado_por    CHAR(36),
+  created           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_dev_producto FOREIGN KEY (id_producto) REFERENCES Producto(id_producto),
+  CONSTRAINT fk_dev_ajuste FOREIGN KEY (id_ajuste) REFERENCES Ajuste_Inventario(id_ajuste) ON DELETE SET NULL,
+  CONSTRAINT fk_dev_perfil FOREIGN KEY (registrado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL,
+  CONSTRAINT chk_dev_cantidad CHECK (cantidad_devuelta > 0)
+) ENGINE=InnoDB;
+
+-- ============================================================
 -- AVISOS (Alertas de Inventario / Estantería)
 -- Modal Agregar/Editar Producto -> .aip-* / widget "Alertas de
 -- Inventario". Un renglón "vivo" por producto + tipo de aviso
@@ -434,6 +486,54 @@ CREATE TABLE Aviso (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+-- NOTIFICACIONES
+-- ============================================================
+-- Campana de notificaciones (ícono con badge en el header, ver
+-- 1784856867719_image.png). Deliberadamente independiente de Aviso:
+-- Aviso es un semáforo de INVENTARIO por producto, con UNIQUE
+-- (id_producto, tipo) — una fila viva por producto+tipo que se
+-- actualiza in-place cuando cambia el stock. Notificacion es de
+-- propósito general (puede venir de cualquier módulo: devoluciones,
+-- ventas, usuarios...), no tiene ese UNIQUE, y puede acumular varias
+-- entradas para el mismo producto/evento con el tiempo — es un feed,
+-- no un semáforo.
+CREATE TABLE Notificacion (
+  id_notificacion   CHAR(36)     PRIMARY KEY DEFAULT (UUID()),
+  titulo            VARCHAR(150) NOT NULL,
+  descripcion       VARCHAR(500) NOT NULL,
+  tipo              ENUM('info','warning','alert','success') NOT NULL DEFAULT 'info',
+  -- Nullable a propósito: no toda notificación necesita urgencia
+  -- (ej. "success" de una venta cerrada no ocupa prioridad).
+  prioridad         ENUM('baja','media','alto','urgente') NULL,
+  is_read           BOOLEAN      NOT NULL DEFAULT FALSE,
+  is_completed      BOOLEAN      NOT NULL DEFAULT FALSE,
+  -- Referencia polimórfica opcional: A QUÉ registro dispara esta
+  -- notificación (ej. id_referencia = Producto.id_producto +
+  -- tabla_referencia = 'Producto'; o id_referencia = Devolucion.
+  -- id_devolucion + tabla_referencia = 'Devolucion'). Sin FK real
+  -- porque tabla_referencia cambia según el caso — MySQL no soporta
+  -- FKs polimórficas; mismo espíritu que Bitacora.entidad más abajo.
+  -- Al no haber FK, un DELETE en la tabla referida NO borra ni avisa
+  -- aquí sola: si el registro original se elimina, la notificación
+  -- se queda apuntando a un id que ya no existe (huérfana pero
+  -- inofensiva, sigue siendo legible por su título/descripción).
+  id_referencia     CHAR(36)     NULL,
+  tabla_referencia  VARCHAR(50)  NULL,
+  -- A quién le pertenece. NULL = notificación global (todos los
+  -- perfiles la ven), igual de opcional que Bitacora.id_actor.
+  id_perfil_info    CHAR(36)     NULL,
+  created           TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_notificacion_perfil FOREIGN KEY (id_perfil_info)
+    REFERENCES Perfil_Info(id_perfil_info) ON DELETE CASCADE,
+  -- Ambas columnas de la referencia van juntas o ninguna: no tiene
+  -- sentido un id_referencia sin saber de qué tabla es, ni al revés.
+  CONSTRAINT chk_notif_referencia CHECK (
+    (id_referencia IS NULL AND tabla_referencia IS NULL) OR
+    (id_referencia IS NOT NULL AND tabla_referencia IS NOT NULL)
+  )
+) ENGINE=InnoDB;
+
+-- ============================================================
 -- ÍNDICES ADICIONALES
 -- ============================================================
 CREATE INDEX idx_lote_producto  ON Lote(id_producto);
@@ -443,6 +543,11 @@ CREATE INDEX idx_vdi_vd         ON Venta_Detalle_Impuesto(id_vd);
 CREATE INDEX idx_venta_created  ON Venta(created DESC);
 CREATE INDEX idx_costo_detalle  ON Entrada_Detalle_Costo(id_detalle);
 CREATE INDEX idx_aviso_leido    ON Aviso(leido);
+-- La campana de notificaciones siempre filtra por dueño + no leídas y
+-- ordena por más reciente primero — mismo patrón que idx_bitacora_*.
+CREATE INDEX idx_notificacion_perfil_leido ON Notificacion(id_perfil_info, is_read);
+CREATE INDEX idx_notificacion_created      ON Notificacion(created DESC);
+CREATE INDEX idx_notificacion_referencia   ON Notificacion(tabla_referencia, id_referencia);
 
 -- ============================================================
 -- PROCEDIMIENTOS ALMACENADOS — MÁRGENES / IMPUESTOS
@@ -829,16 +934,28 @@ BEGIN
   END LOOP;
   CLOSE cur_lotes;
 
-  UPDATE Inventario SET cantidad_total = cantidad_total - NEW.cantidad, last_update = CURRENT_TIMESTAMP
+  -- Se descuenta primero de la estantería (de ahí se "agarra" físicamente
+  -- al vender) y lo que sobra sale del almacén sin más trámite: al bajar
+  -- cantidad_total sin poder bajar cantidad_estanteria más allá de lo que
+  -- había, cantidad_almacen (generada como total - estanteria) absorbe la
+  -- diferencia sola. Ej.: estantería=5, almacén=1 (total=6), se venden 6 ->
+  -- estantería queda en 0 (se agarraron sus 5) y total en 0 (el almacén
+  -- puso el 1 que faltaba). GREATEST evita que quede negativa si se
+  -- vendiera de golpe más de lo que hay repartido entre estantería/almacén.
+  UPDATE Inventario
+  SET cantidad_estanteria = GREATEST(cantidad_estanteria - NEW.cantidad, 0),
+      cantidad_total = GREATEST(cantidad_total - NEW.cantidad, 0),
+      last_update = CURRENT_TIMESTAMP
   WHERE id_producto = NEW.id_producto;
 END$$
 
--- Congela margen + impuestos aplicados en esta línea de venta,
--- justo después de insertarla (ver Venta_Detalle / Venta_Detalle_
--- Impuesto). Esto es lo que queda fijo para reportes, aunque las
--- tasas cambien después.
-CREATE TRIGGER tr_vd_congelar_desglose
-AFTER INSERT ON Venta_Detalle
+-- Congela el margen aplicado en esta línea de venta ANTES del insert,
+-- asignando directo sobre NEW (sin UPDATE separado). Un AFTER INSERT
+-- no puede hacer UPDATE sobre la misma tabla que lo disparó (error 1442
+-- "already used by statement which invoked this trigger"), por eso esto
+-- va en BEFORE y no en el mismo trigger que el desglose de impuestos.
+CREATE TRIGGER tr_vd_congelar_margen
+BEFORE INSERT ON Venta_Detalle
 FOR EACH ROW
 BEGIN
   DECLARE v_id_margenes CHAR(36);
@@ -860,13 +977,20 @@ BEGIN
     LIMIT 1;
   END IF;
 
-  UPDATE Venta_Detalle
-  SET id_margenes                = v_id_margenes,
-      margen_nombre              = v_margen_nombre,
-      margen_porcentaje_aplicado = v_margen_pct,
-      costo_referencia_usado     = v_costo_ref
-  WHERE id_vd = NEW.id_vd;
+  SET NEW.id_margenes = v_id_margenes;
+  SET NEW.margen_nombre = v_margen_nombre;
+  SET NEW.margen_porcentaje_aplicado = v_margen_pct;
+  SET NEW.costo_referencia_usado = v_costo_ref;
+END$$
 
+-- Congela el desglose de impuestos DESPUÉS del insert. Esto sí puede ir
+-- en AFTER porque escribe en Venta_Detalle_Impuesto (otra tabla, no la
+-- que disparó el trigger) y para entonces NEW.subtotal (columna
+-- generada) ya quedó calculado.
+CREATE TRIGGER tr_vd_congelar_impuestos
+AFTER INSERT ON Venta_Detalle
+FOR EACH ROW
+BEGIN
   INSERT INTO Venta_Detalle_Impuesto (id_vd, id_impuestos, impuesto_nombre, porcentaje_aplicado, monto_aplicado)
   SELECT
     NEW.id_vd,
@@ -881,13 +1005,23 @@ BEGIN
   WHERE pi.id_producto = NEW.id_producto AND pi.activo = TRUE;
 END$$
 
--- Aplicar ajuste de inventario
+-- Aplicar ajuste de inventario.
+-- INSERT ... ON DUPLICATE KEY (igual que tr_detalle_entrada), NO un
+-- UPDATE simple: un producto puede no tener fila todavía en Inventario
+-- (si nunca se le registró una Entrada) y un UPDATE contra una fila
+-- que no existe afecta 0 filas SIN ERROR — la devolución/ajuste se
+-- guarda "exitosamente" pero la cantidad nunca llega a sumarse. Con
+-- ON DUPLICATE KEY la fila se crea sola la primera vez, igual que ya
+-- pasa al registrar una Entrada.
 CREATE TRIGGER tr_ajuste
 AFTER INSERT ON Ajuste_Inventario
 FOR EACH ROW
 BEGIN
-  UPDATE Inventario SET cantidad_total = cantidad_total + NEW.cantidad_ajuste, last_update = CURRENT_TIMESTAMP
-  WHERE id_producto = NEW.id_producto;
+  INSERT INTO Inventario (id_producto, cantidad_total)
+    VALUES (NEW.id_producto, NEW.cantidad_ajuste)
+  ON DUPLICATE KEY UPDATE
+    cantidad_total = cantidad_total + NEW.cantidad_ajuste,
+    last_update = CURRENT_TIMESTAMP;
 
   IF NEW.id_lote IS NOT NULL THEN
     UPDATE Lote SET
@@ -1253,3 +1387,28 @@ CREATE OR REPLACE VIEW v_valor_inventario AS
 SELECT COALESCE(SUM(l.cantidad_disponible * p.costo_final), 0) AS valor_total
 FROM Lote l JOIN Producto p ON p.id_producto = l.id_producto
 WHERE l.estado_lote IN ('activo','parcial');
+
+-- ============================================================
+-- SEED: usuario por defecto
+-- Se crea SOLO la primera vez que se carga este archivo (base
+-- vacía, ver ensureSchemaLoaded() en mysqlManager.ts). No pasa
+-- por sp_crear_usuario porque ese procedimiento espera el
+-- password en texto plano y lo hashea con bcryptjs en main.ts;
+-- aquí el hash ya viene calculado (bcrypt, cost 10, mismo
+-- algoritmo y costo que usa bcrypt.hash(password, 10) en main.ts)
+-- para poder insertarse directo por SQL sin pasar por Electron.
+--
+-- Usuario: @arome / Adal@cuchilla.com / contraseña: romero935
+-- Rol: Dev
+-- ============================================================
+SET @id_admin_default = UUID();
+
+INSERT INTO Perfil_Info (id_perfil_info, usuario, nombres, apellido_paterno, apellido_materno, rol)
+VALUES (@id_admin_default, '@arome', 'Adal', 'Rome', NULL, 'Dev');
+
+INSERT INTO Credenciales (id_perfil_info, correo_acceso, password_hash)
+VALUES (
+  @id_admin_default,
+  'Adal@cuchilla.com',
+  '$2b$10$LqKz7h5pVOMlJXXzVqlYK.mayyv/tEY1EYjI2XH6PA5VH.gWiGlbi'
+);

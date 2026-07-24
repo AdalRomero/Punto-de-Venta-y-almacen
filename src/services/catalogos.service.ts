@@ -64,6 +64,17 @@ function limpiarMensajeIpc(err: unknown, contexto?: string): string {
     const match = msg.match(/Error:\s*(.+)$/);
     if (match) msg = match[1];
 
+    // Antes de la constraint genérica: el choque de código de familia
+    // (uq_familia_digitos) necesita su propio mensaje, no el de "nombre".
+    const esCodigoDuplicado = /uq_familia_digitos/i.test(msg);
+    if (esCodigoDuplicado) {
+        return "Ese código de familia ya lo tiene otra familia. Cada código (01, 02...) solo puede usarse una vez.";
+    }
+    const esCodigoInvalido = /chk_familia_digitos_min/i.test(msg);
+    if (esCodigoInvalido) {
+        return "El código de familia debe ser 01 o mayor.";
+    }
+
     const esConstraint = /foreign key|fk_|constraint/i.test(msg);
     if (esConstraint) {
         return contexto
@@ -77,6 +88,39 @@ function limpiarMensajeIpc(err: unknown, contexto?: string): string {
     return msg || "Ocurrió un error inesperado. Intenta de nuevo.";
 }
 
+/** El código de familia (digitos) nunca puede ser menor a 1 (el
+ *  catálogo arranca en "01"). Se valida aquí, en el borde de la
+ *  capa de datos, para que ninguna pantalla pueda saltárselo aunque
+ *  no repita la regla en su propio formulario. */
+function validarDigitosFamilia(digitos: number): void {
+    if (!Number.isInteger(digitos) || digitos < 1) {
+        throw new Error("El código de familia debe ser un número entero de 01 en adelante.");
+    }
+}
+
+function obtenerActorId(): string | null {
+    try {
+        const raw = sessionStorage.getItem("auth_session_cuchilla");
+        if (!raw) return null;
+        const sesion = JSON.parse(raw) as { id_perfil_info?: string };
+        return sesion.id_perfil_info ?? null;
+    } catch {
+        return null;
+    }
+}
+
+async function logActividad(accion: string, entidad: string, descripcion: string, entityChannel: string) {
+    const actorId = obtenerActorId();
+    if (!actorId) return;
+    try {
+        await window.api.execute(
+            `INSERT INTO Bitacora (id_perfil_info, id_actor, accion, entidad, descripcion) VALUES (?, ?, ?, ?, ?)`,
+            [actorId, actorId, accion, entidad, descripcion],
+            entityChannel
+        );
+    } catch {}
+}
+
 /* ═══════════════════════════════════════════════════════════
    FAMILIAS
    ═══════════════════════════════════════════════════════════ */
@@ -86,7 +130,7 @@ const ENTITY_FAMILIAS = "familias";
 export async function listarFamilias(): Promise<Familia[]> {
     try {
         return await window.api.query(
-            "SELECT id_familia, nombre, digitos, created FROM Familia ORDER BY digitos ASC"
+            "SELECT id_familia, nombre, digitos, created FROM Familia ORDER BY created DESC"
         );
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
@@ -94,6 +138,7 @@ export async function listarFamilias(): Promise<Familia[]> {
 }
 
 export async function crearFamilia(nombre: string, digitos: number): Promise<Familia> {
+    validarDigitosFamilia(digitos);
     const id_familia = uid();
     try {
         await window.api.execute(
@@ -108,6 +153,7 @@ export async function crearFamilia(nombre: string, digitos: number): Promise<Fam
         "SELECT id_familia, nombre, digitos, created FROM Familia WHERE id_familia = ?",
         [id_familia]
     );
+    await logActividad('crear_catalogo', 'catalogo', `Creó familia: ${nombre}`, ENTITY_FAMILIAS);
     return rows[0];
 }
 
@@ -116,12 +162,14 @@ export async function actualizarFamilia(
     nombre: string,
     digitos: number
 ): Promise<void> {
+    validarDigitosFamilia(digitos);
     try {
         await window.api.execute(
             "UPDATE Familia SET nombre = ?, digitos = ? WHERE id_familia = ?",
             [nombre, digitos, id_familia],
             ENTITY_FAMILIAS
         );
+        await logActividad('actualizar_catalogo', 'catalogo', `Actualizó familia: ${nombre}`, ENTITY_FAMILIAS);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }
@@ -235,6 +283,7 @@ async function crearTasaCatalogo(
             [idTasa, id, porcentajeInicial, registradoPor],
             cfg.entity
         );
+        await logActividad('crear_catalogo', 'catalogo', `Creó ${cfg.entity}: ${nombre}`, cfg.entity);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }
@@ -273,10 +322,9 @@ async function actualizarTasaVigente(
 ): Promise<TasaHistorial> {
     const idTasa = uid();
     try {
-        // Cierra la fila vigente (si había una) y abre la nueva. No es
-        // una transacción real (window.api no la expone), pero si el
-        // segundo statement fallara, el primero ya cerró la vigente:
-        // preferible a dejar dos filas "vigentes" a la vez.
+        const catalogNameRows = await window.api.query(`SELECT nombre FROM ${cfg.tablaCatalogo} WHERE ${cfg.idCol} = ?`, [id]);
+        const catalogName = catalogNameRows[0]?.nombre || `ID: ${id.substring(0, 8)}`;
+
         await window.api.execute(
             `UPDATE ${cfg.tablaHistorial}
              SET vigente_hasta = NOW()
@@ -291,6 +339,7 @@ async function actualizarTasaVigente(
             [idTasa, id, nuevoPorcentaje, registradoPor],
             cfg.entity
         );
+        await logActividad('actualizar_catalogo', 'catalogo', `Actualizó tasa de ${cfg.entity} (${catalogName}) al ${nuevoPorcentaje}%`, cfg.entity);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }

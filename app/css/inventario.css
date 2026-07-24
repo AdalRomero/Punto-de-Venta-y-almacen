@@ -53,23 +53,74 @@
 }
 
 /* =============================================
-   KPIs
+   KPIs — Bentogrid
+   La card de "Total Productos" queda como ancla,
+   alta y a la izquierda; el resto son cards chicas
+   de un solo estado cada una (aviso vs. crítico
+   separados), acomodadas en una grilla 3 x 2 a la
+   derecha para que quepan holgadas y ordenadas.
    ============================================= */
 .inv-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 12px;
     margin-bottom: 28px;
+}
+
+.inv-kpi-card-total {
+    flex: 0 0 220px;
+}
+
+/* Las 7 cards pequeñas (no 6: "Estantería" se dividió en Vacía/
+   Crítica/Por Completar) ya no caben en la grilla 3x2 original. Antes
+   se intentó un solo grid de 4 columnas con colocación explícita
+   (3 arriba, 4 abajo), pero eso dejaba la 4ª columna de la fila de
+   arriba vacía — un hueco en blanco a la derecha. Ahora son DOS filas
+   independientes, cada una con su propio número de columnas: la de
+   arriba reparte el ancho completo entre 3 cards, la de abajo entre 4.
+   Ninguna fila deja espacio sin usar. */
+.inv-kpi-minis {
+    flex: 1 1 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.inv-kpi-minis-row {
+    display: grid;
+    gap: 12px;
+}
+
+.inv-kpi-minis-row-top {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.inv-kpi-minis-row-bottom {
+    grid-template-columns: repeat(4, 1fr);
 }
 
 @media (max-width: 1024px) {
     .inv-kpi-grid {
+        flex-direction: column;
+    }
+
+    .inv-kpi-card-total {
+        flex: 1 1 auto;
+    }
+
+    /* En pantallas angostas, cada fila reparte su ancho entre menos
+       columnas en vez de mantener 3/4 fijo. */
+    .inv-kpi-minis-row-top,
+    .inv-kpi-minis-row-bottom {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 560px) {
-    .inv-kpi-grid {
+@media (max-width: 640px) {
+
+    .inv-kpi-minis-row-top,
+    .inv-kpi-minis-row-bottom {
         grid-template-columns: 1fr;
     }
 }
@@ -78,12 +129,12 @@
     background: var(--cuh-bg-white);
     border: 1px solid var(--cuh-border);
     border-radius: var(--cuh-radius-lg);
-    padding: 20px;
+    padding: 18px;
     box-shadow: var(--cuh-shadow-sm);
     display: flex;
     align-items: center;
-    gap: 16px;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    gap: 14px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.15s ease;
 }
 
 .inv-kpi-card:hover {
@@ -91,14 +142,51 @@
     transform: translateY(-1px);
 }
 
+/* Las cards pequeñas son <button> clickeables: quitar reset del
+   navegador y dejarlas del mismo tamaño/alineación que las demás. */
+.inv-kpi-card-mini {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    padding: 12px 14px;
+    gap: 10px;
+}
+
+.inv-kpi-card-mini:hover {
+    border-color: var(--cuh-text-light);
+}
+
+.inv-kpi-card-mini.active {
+    border-color: currentColor;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04), var(--cuh-shadow-md);
+}
+
+.inv-kpi-card-mini.tone-red.active {
+    background: var(--cuh-danger-bg);
+}
+
+.inv-kpi-card-mini.tone-yellow.active {
+    background: var(--cuh-warning-bg);
+}
+
+.inv-kpi-card-mini.tone-black.active {
+    background: var(--cuh-border-light);
+}
+
 .inv-kpi-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+.inv-kpi-card-total .inv-kpi-icon {
+    width: 48px;
+    height: 48px;
 }
 
 .inv-kpi-icon.tone-primary {
@@ -111,39 +199,61 @@
     color: var(--cuh-secondary);
 }
 
-.inv-kpi-icon.tone-warning {
+.inv-kpi-icon.tone-warning,
+.inv-kpi-icon.tone-yellow {
     background: var(--cuh-warning-bg);
     color: var(--cuh-warning);
 }
 
-.inv-kpi-icon.tone-danger {
+.inv-kpi-icon.tone-danger,
+.inv-kpi-icon.tone-red {
     background: var(--cuh-danger-bg);
     color: var(--cuh-danger);
 }
 
+.inv-kpi-icon.tone-black {
+    background: var(--cuh-border-light);
+    color: var(--cuh-sidebar-bg);
+}
+
 .inv-kpi-label {
-    font-size: 12.5px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--cuh-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     margin: 0;
+    white-space: nowrap;
+}
+
+.inv-kpi-card-total .inv-kpi-label {
+    font-size: 12.5px;
 }
 
 .inv-kpi-value {
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 800;
     color: var(--cuh-text-dark);
     margin: 2px 0 0;
     line-height: 1.1;
 }
 
-.inv-kpi-value.tone-warning {
+.inv-kpi-card-total .inv-kpi-value {
+    font-size: 24px;
+}
+
+.inv-kpi-value.tone-warning,
+.inv-kpi-value.tone-yellow {
     color: var(--cuh-warning);
 }
 
-.inv-kpi-value.tone-danger {
+.inv-kpi-value.tone-danger,
+.inv-kpi-value.tone-red {
     color: var(--cuh-danger);
+}
+
+.inv-kpi-value.tone-black {
+    color: var(--cuh-sidebar-bg);
 }
 
 /* =============================================
@@ -161,6 +271,20 @@
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
     align-items: end;
+}
+
+/* Búsqueda + Familia: la búsqueda queda más ancha que el selector. */
+.inv-filters-row {
+    grid-template-columns: minmax(240px, 2fr) minmax(200px, 1fr);
+}
+
+.inv-filters-row+.inv-filters-row {
+    margin-top: 12px;
+}
+
+/* Estantería / Existencias / Caducidad: 3 dropdowns más angostos. */
+.inv-filters-row-estado {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
 }
 
 .inv-search-wrap {
@@ -431,6 +555,268 @@
     background: white;
 }
 
+/* =============================================
+   Dropdowns de "Filtrar por estado" — uno por
+   categoría (Estantería / Existencias / Caducidad),
+   integrados al toolbar con el mismo look que el
+   selector de Familia (form-select), para no armar
+   un solo dropdown largo con todo junto.
+   ============================================= */
+.inv-estado-select {
+    position: relative;
+}
+
+.inv-estado-select .form-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.inv-estado-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.inv-estado-trigger .chevron {
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    color: var(--cuh-text-light);
+}
+
+.inv-estado-trigger .chevron.open {
+    transform: rotate(180deg);
+}
+
+.inv-estado-trigger.has-active {
+    border-color: var(--cuh-primary);
+    color: var(--cuh-primary-hover);
+}
+
+.inv-estado-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    min-width: 220px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border-light);
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-lg);
+    z-index: 50;
+    padding: 6px;
+}
+
+.inv-estado-grupo-opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inv-estado-opcion {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    text-align: left;
+    padding: 8px;
+    border-radius: var(--cuh-radius);
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-base);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.inv-estado-opcion:hover {
+    background: var(--cuh-bg);
+}
+
+.inv-estado-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    border: 1.5px solid var(--cuh-border);
+    color: white;
+    flex-shrink: 0;
+}
+
+.inv-estado-check.checked {
+    background: var(--cuh-primary);
+    border-color: var(--cuh-primary);
+}
+
+.inv-estado-opcion.tone-green .inv-alert-dot {
+    background: var(--cuh-success);
+}
+
+.inv-estado-opcion.tone-yellow .inv-alert-dot {
+    background: var(--cuh-warning);
+}
+
+.inv-estado-opcion.tone-red .inv-alert-dot {
+    background: var(--cuh-danger);
+}
+
+.inv-estado-opcion.tone-black .inv-alert-dot {
+    background: var(--cuh-sidebar-bg);
+}
+
+.inv-estado-menu-clear {
+    width: 100%;
+    text-align: center;
+    margin-top: 6px;
+    padding-top: 8px;
+    border: none;
+    border-top: 1px solid var(--cuh-border-light);
+    background: transparent;
+    color: var(--cuh-text-light);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.inv-estado-menu-clear:hover {
+    color: var(--cuh-text-base);
+}
+
+/* Chips de filtros activos — resumen debajo del toolbar de los
+   estados elegidos entre los 3 dropdowns, cada uno quitable. */
+.inv-estado-chips-bar {
+    margin-bottom: 16px;
+    padding: 0 2px;
+}
+
+.inv-estado-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.inv-estado-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.inv-estado-chip:hover {
+    opacity: 0.8;
+}
+
+.inv-estado-chip svg {
+    margin-left: 1px;
+}
+
+.inv-estado-chip.tone-green {
+    background: var(--cuh-success-bg);
+    border-color: rgba(79, 122, 70, 0.25);
+    color: var(--cuh-success-text);
+}
+
+.inv-estado-chip.tone-green .inv-alert-dot {
+    background: var(--cuh-success);
+}
+
+.inv-estado-chip.tone-yellow {
+    background: var(--cuh-warning-bg);
+    border-color: rgba(201, 138, 59, 0.25);
+    color: var(--cuh-warning-text);
+}
+
+.inv-estado-chip.tone-yellow .inv-alert-dot {
+    background: var(--cuh-warning);
+}
+
+.inv-estado-chip.tone-red {
+    background: var(--cuh-danger-bg);
+    border-color: rgba(188, 87, 68, 0.25);
+    color: var(--cuh-danger-text);
+}
+
+.inv-estado-chip.tone-red .inv-alert-dot {
+    background: var(--cuh-danger);
+}
+
+.inv-estado-chip.tone-black {
+    background: var(--cuh-border-light);
+    border-color: var(--cuh-border);
+    color: var(--cuh-text-dark);
+}
+
+.inv-estado-chip.tone-black .inv-alert-dot {
+    background: var(--cuh-sidebar-bg);
+}
+
+/* Botón "Resurtida" dentro de la columna Estantería */
+.inv-restock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--cuh-primary);
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary-hover);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.inv-restock-btn:hover:not(:disabled) {
+    background: var(--cuh-primary);
+    color: white;
+}
+
+.inv-restock-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+/* Mensaje temporal junto al aviso, tras darle "Resurtida" */
+.inv-restock-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--cuh-success-text);
+}
+
+.inv-spin {
+    animation: inv-spin-rotate 0.8s linear infinite;
+}
+
+@keyframes inv-spin-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .inv-alert-clear {
     font-size: 11px;
     font-weight: 700;
@@ -600,12 +986,77 @@
 }
 
 /* =============================================
+   Pagination — componente reutilizable de páginas
+   numeradas (1 2 3…), usado en productos y lotes.
+   ============================================= */
+.cuh-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.cuh-pagination-btn {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 6px;
+    border: 1px solid var(--cuh-border-light);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-muted);
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.cuh-pagination-btn:hover:not(:disabled):not(.active) {
+    background: var(--cuh-bg);
+    color: var(--cuh-text-dark);
+}
+
+.cuh-pagination-btn.active {
+    background: var(--cuh-primary, #2f6feb);
+    border-color: var(--cuh-primary, #2f6feb);
+    color: #fff;
+    cursor: default;
+}
+
+.cuh-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.cuh-pagination-arrow {
+    color: var(--cuh-text-muted);
+}
+
+.cuh-pagination-ellipsis {
+    width: 24px;
+    text-align: center;
+    color: var(--cuh-text-light);
+    font-size: 12.5px;
+}
+
+/* =============================================
    Scroll infinito — loader
    ============================================= */
 .inv-infinite-loader {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
     padding: 24px 0;
+}
+
+.inv-infinite-loader:has(> :only-child) {
+    justify-content: center;
 }
 
 .inv-infinite-loader-inner {
@@ -641,7 +1092,9 @@
         padding: 16px;
     }
 
-    .inv-filters-grid {
+    .inv-filters-grid,
+    .inv-filters-row,
+    .inv-filters-row-estado {
         grid-template-columns: 1fr;
     }
 }

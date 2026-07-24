@@ -345,12 +345,20 @@ export default function AddEntrada({
         costoNum > 0 && ultimoCosto ? ((costoNum - ultimoCosto) / ultimoCosto) * 100 : null;
     const showCostoAlerta = diffPerc !== null && Math.abs(diffPerc) >= 10;
 
-    /* ── Aviso de caducidad (usa los umbrales reales del producto) ── */
+    /* ── Aviso de caducidad (usa los umbrales reales del producto) ──
+       OJO: `caducidad` es un string 'YYYY-MM-DD' (input type=date). Si se
+       hiciera `new Date(caducidad)` a secas, JS lo interpreta como
+       medianoche UTC, no medianoche local — en cualquier zona detrás de
+       UTC (México) eso corre la fecha un día hacia atrás y el lote
+       aparece "VENCIDO" un día antes de tiempo. Se fuerza a medianoche
+       LOCAL agregando la hora, y "hoy" también se trunca a medianoche
+       local para comparar día contra día, no hora contra hora. */
     let avisoCaducidad: { tone: string; texto: string } | null = null;
     if (productoSeleccionado && caducidad) {
         const hoy = new Date();
-        const fechaExp = new Date(caducidad);
-        const diasRestantes = Math.ceil(
+        hoy.setHours(0, 0, 0, 0);
+        const fechaExp = new Date(`${caducidad}T00:00:00`);
+        const diasRestantes = Math.round(
             (fechaExp.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24)
         );
         const umbralRojo = productoSeleccionado.umbral_rojo_dias ?? 7;
@@ -369,17 +377,53 @@ export default function AddEntrada({
 
     /* ── Calculadora / proyección del lote. "Cantidad Entrante" es el
        límite fijo del lote; cuando hay desglose, sus líneas deben sumar
-       exactamente esa cantidad (nunca al revés). ── */
+       exactamente esa cantidad (nunca al revés).
+
+       IMPORTANTE: el Precio de Venta NO se recalcula aquí. Ya está
+       definido en Producto.costo_final (costo_referencia × margen ×
+       impuestos vigentes, vía trigger — ver inventory.service.ts).
+       Capturar una entrada no cambia ese precio; lo único que cambia
+       es cuánto costó ADQUIRIR este lote. Por eso toda la rentabilidad
+       de abajo compara el costo de esta compra contra el precio real
+       ya fijado, no contra un precio inventado con el costo de hoy. */
     const cantidadNum = parseFloat(cantidad) || 0;
     const restanteDesglose = cantidadNum - cantidadDesglose;
     const margenPct = margenes.find((m) => m.id_margenes === productoSeleccionado?.id_margenes)?.porcentaje || 0;
     const impuestoPct = impuestos.find((i) => i.id_impuestos === productoSeleccionado?.id_impuestos)?.porcentaje || 0;
 
-    const precioConMargen = costoNum > 0 ? costoNum * (1 + margenPct / 100) : 0;
-    const precioFinalUnitario = precioConMargen > 0 ? precioConMargen * (1 + impuestoPct / 100) : 0;
-    const utilidadPorUnidad = precioConMargen - costoNum;
-    const utilidadTotalLote = utilidadPorUnidad * cantidadNum;
+    // Precio real al público, ya definido en el producto. null si el
+    // producto todavía no tiene margen/costo de referencia configurado.
+    const precioVentaActual = productoSeleccionado?.costo_final ?? null;
+    const precioVentaDefinido = precioVentaActual !== null && precioVentaActual > 0;
+
+    // Producto.costo_final YA incluye el impuesto (así lo arma el trigger:
+    // costo_referencia × margen × impuestos vigentes). Ese impuesto es
+    // dinero que se cobra del cliente pero que hay que apartar para
+    // declarar — no es utilidad tuya. Por eso, antes de calcular ganancia,
+    // se le quita al precio para quedarnos con la parte que sí es tuya.
+    const precioVentaSinImpuesto = precioVentaDefinido
+        ? precioVentaActual / (1 + impuestoPct / 100)
+        : null;
+    const impuestoPorUnidad = precioVentaDefinido ? precioVentaActual - precioVentaSinImpuesto! : 0;
+
     const inversionTotalLote = costoNum * cantidadNum;
+    // Utilidad real de ESTE lote: precio SIN impuesto - lo que costó
+    // adquirirlo. Puede ser distinta al "margen asignado" nominal si el
+    // costo de compra de hoy no es igual al costo_referencia con el que
+    // se fijó el precio.
+    const utilidadPorUnidad = precioVentaDefinido ? precioVentaSinImpuesto! - costoNum : 0;
+    const utilidadTotalLote = utilidadPorUnidad * cantidadNum;
+    // Ingreso Esperado sí lleva el impuesto incluido: es lo que
+    // efectivamente entra a caja al vender el lote completo.
+    const ingresoEsperadoLote = precioVentaDefinido ? precioVentaActual * cantidadNum : 0;
+    const impuestoTotalLote = impuestoPorUnidad * cantidadNum;
+    // Margen real logrado en esta compra (vs. margenPct, que es el nominal
+    // asignado al producto) y retorno sobre lo invertido en el lote —
+    // ambos ya calculados sobre utilidad SIN impuesto.
+    const margenRealPct = precioVentaDefinido && costoNum > 0 ? (utilidadPorUnidad / costoNum) * 100 : 0;
+    const rentabilidadLotePct = inversionTotalLote > 0 ? (utilidadTotalLote / inversionTotalLote) * 100 : 0;
+    const loteDaPerdida = precioVentaDefinido && costoNum > 0 && utilidadPorUnidad <= 0;
+
 
 
     const handleSave = async () => {
@@ -728,6 +772,34 @@ export default function AddEntrada({
                                 </div>
                             )}
 
+                            {productoSeleccionado && !precioVentaDefinido && (
+                                <div className="aen-cost-alert">
+                                    <AlertTriangle size={18} className="aen-cost-alert-icon" />
+                                    <div>
+                                        <p className="aen-cost-alert-title">Sin precio de venta definido</p>
+                                        <p className="aen-cost-alert-body">
+                                            Este producto todavía no tiene margen/costo de referencia configurado
+                                            en Catálogo, así que no se puede calcular su rentabilidad. La entrada
+                                            se puede registrar igual; el inventario no depende del precio.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {loteDaPerdida && (
+                                <div className="aen-cost-alert">
+                                    <AlertTriangle size={18} className="aen-cost-alert-icon" />
+                                    <div>
+                                        <p className="aen-cost-alert-title">Este lote da pérdida</p>
+                                        <p className="aen-cost-alert-body">
+                                            El costo de adquisición (${costoNum.toFixed(2)}) es igual o mayor al
+                                            precio de venta actual (${precioVentaActual!.toFixed(2)}). Verifica el
+                                            costo capturado o revisa el precio del producto en Catálogo.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {productoSeleccionado && (
                                 <div className="aen-info-box">
                                     <span>
@@ -745,6 +817,19 @@ export default function AddEntrada({
                                                 ? `${impuestos.find((i) => i.id_impuestos === productoSeleccionado.id_impuestos)?.nombre} (${impuestoPct}%)`
                                                 : "Sin impuesto"}
                                         </strong>
+                                    </span>
+                                    <span>
+                                        Precio de Venta:{" "}
+                                        {precioVentaDefinido ? (
+                                            <>
+                                                <strong>${precioVentaActual!.toFixed(2)}</strong>
+                                                {" "}
+                                                (sin impuesto ${precioVentaSinImpuesto!.toFixed(2)} + impuesto $
+                                                {impuestoPorUnidad.toFixed(2)})
+                                            </>
+                                        ) : (
+                                            <strong>No configurado</strong>
+                                        )}
                                     </span>
                                 </div>
                             )}
@@ -767,31 +852,39 @@ export default function AddEntrada({
                             </div>
                             <div className="aen-calc-cell">
                                 <p className="aen-calc-cell-label">Utilidad x Unidad</p>
-                                <p className="aen-calc-cell-value tone-success">
+                                <p className={`aen-calc-cell-value${loteDaPerdida ? "" : " tone-success"}`}>
                                     ${utilidadPorUnidad.toFixed(2)}
                                 </p>
-                                <p className="aen-calc-cell-sub">Margen {margenPct}%</p>
-                            </div>
-                            <div className="aen-calc-cell">
-                                <p className="aen-calc-cell-label">Precio Público</p>
-                                <p className="aen-calc-cell-value">${precioFinalUnitario.toFixed(2)}</p>
-                                <p className="aen-calc-cell-sub">c/impuesto ({impuestoPct}%)</p>
+                                <p className="aen-calc-cell-sub">
+                                    {precioVentaDefinido ? `Margen real ${margenRealPct.toFixed(1)}% (sin IVA)` : "—"}
+                                </p>
                             </div>
                             <div className="aen-calc-cell">
                                 <p className="aen-calc-cell-label">Utilidad del Lote</p>
-                                <p className="aen-calc-cell-value tone-success">
+                                <p className={`aen-calc-cell-value${loteDaPerdida ? "" : " tone-success"}`}>
                                     ${utilidadTotalLote.toFixed(2)}
                                 </p>
                                 <p className="aen-calc-cell-sub">
                                     {cantidadNum} × ${utilidadPorUnidad.toFixed(2)}
                                 </p>
                             </div>
+                            <div className="aen-calc-cell">
+                                <p className="aen-calc-cell-label">Rentabilidad</p>
+                                <p className={`aen-calc-cell-value${loteDaPerdida ? "" : " tone-success"}`}>
+                                    {precioVentaDefinido ? `${rentabilidadLotePct.toFixed(1)}%` : "—"}
+                                </p>
+                                <p className="aen-calc-cell-sub">Retorno sobre la inversión</p>
+                            </div>
                             <div className="aen-calc-cell is-highlight">
                                 <p className="aen-calc-cell-label">Ingreso Esperado</p>
                                 <p className="aen-calc-cell-value">
-                                    ${(precioFinalUnitario * cantidadNum).toFixed(2)}
+                                    ${ingresoEsperadoLote.toFixed(2)}
                                 </p>
-                                <p className="aen-calc-cell-sub">Total del lote</p>
+                                <p className="aen-calc-cell-sub">
+                                    {precioVentaDefinido
+                                        ? `Incluye $${impuestoTotalLote.toFixed(2)} de impuesto a apartar`
+                                        : "Total del lote a precio actual"}
+                                </p>
                             </div>
                         </div>
                     </div>

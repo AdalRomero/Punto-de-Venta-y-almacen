@@ -1,0 +1,44 @@
+/* =============================================
+   App La Cuchilla — Toast global
+   Usa las variables de index.css (--cuh-*).
+   Componente: components/Toast.tsx (default export Toast + hook useToast).
+   ============================================= */
+
+.ui-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: var(--cuh-radius-lg);
+    box-shadow: var(--cuh-shadow-lg);
+    font-size: 13.5px;
+    font-weight: 600;
+    animation: ui-toast-in 0.2s ease;
+    max-width: 360px;
+}
+
+.ui-toast.tone-success {
+    background: var(--cuh-success);
+    color: white;
+}
+
+.ui-toast.tone-error {
+    background: var(--cuh-danger);
+    color: white;
+}
+
+@keyframes ui-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

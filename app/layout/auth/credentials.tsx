@@ -4,8 +4,6 @@ import FormInput from '../../components/FormInput.tsx';
 import PasswordInput from '../../components/Passwordinput.tsx';
 import { MailIcon, ErrorIcon, SpinnerIcon } from '../../components/Icons.tsx';
 import WarningModal from '../../components/modals/WarningModal.tsx';
-import SuccessModal from '../../components/modals/SuccessModal.tsx';
-import ErrorModal from '../../components/modals/ErrorModal.tsx';
 import {
     type Usuario,
     correoAccesoDisponible,
@@ -36,9 +34,10 @@ interface AsignarCredencialesProps {
     // asignado, para que quien monte este componente pueda
     // actualizar su estado local sin esperar al refresco de la lista.
     onSuccess?: (correoAcceso: string) => void;
+    showError?: (title: string, message: string) => void;
 }
 
-export default function AsignarCredenciales({ usuario, onBack, onSuccess }: AsignarCredencialesProps) {
+export default function AsignarCredenciales({ usuario, onBack, onSuccess, showError }: AsignarCredencialesProps) {
     // Estados del formulario
     const [correo, setCorreo] = useState(usuario.contacto?.correo_personal || '');
     const [password, setPassword] = useState('');
@@ -50,9 +49,6 @@ export default function AsignarCredenciales({ usuario, onBack, onSuccess }: Asig
 
     // Estados de control para los modales
     const [showWarning, setShowWarning] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [showError, setShowError] = useState(false);
-    const [apiErrorMsg, setApiErrorMsg] = useState('');
 
     // Resguardo: si por alguna razón se monta con un usuario que ya
     // tiene acceso, no tiene caso mostrar el formulario.
@@ -91,26 +87,24 @@ export default function AsignarCredenciales({ usuario, onBack, onSuccess }: Asig
         try {
             const correoLibre = await correoAccesoDisponible(correoLimpio);
             if (!correoLibre) {
-                setApiErrorMsg('Ese correo de acceso ya está en uso por otro usuario.');
-                setShowError(true);
+                showError?.('Error', 'Ese correo de acceso ya está en uso por otro usuario.');
                 return;
             }
 
             await asignarCredenciales(usuario.id_perfil_info, correoLimpio, password);
-            setShowSuccess(true);
+            onSuccess?.(correoLimpio);
+            onBack();
         } catch (err) {
             const esDuplicado =
                 err instanceof Error &&
                 (/ER_DUP_ENTRY/i.test(err.message) || /1062/.test(err.message) || /duplicate/i.test(err.message));
 
-            setApiErrorMsg(
-                esDuplicado
-                    ? 'Ese correo de acceso ya fue tomado por otro registro.'
-                    : err instanceof Error
-                        ? err.message
-                        : 'Ocurrió un error al procesar las nuevas credenciales.'
+            showError?.('Error de Creación', esDuplicado
+                ? 'Ese correo de acceso ya fue tomado por otro registro.'
+                : err instanceof Error
+                    ? err.message
+                    : 'Ocurrió un error al procesar las nuevas credenciales.'
             );
-            setShowError(true);
         } finally {
             setLoading(false);
         }
@@ -210,24 +204,6 @@ export default function AsignarCredenciales({ usuario, onBack, onSuccess }: Asig
                 onConfirm={handleActualSubmit}
                 title="¿Asignar credenciales de acceso?"
                 message="Se dará de alta esta cuenta en el servidor de autenticación de inmediato y se activará el perfil del usuario."
-            />
-
-            <SuccessModal
-                isOpen={showSuccess}
-                onClose={() => {
-                    setShowSuccess(false);
-                    onSuccess?.(correo.trim());
-                    onBack();
-                }}
-                title="¡Acceso Creado!"
-                message="Las credenciales han sido generadas y vinculadas al perfil con éxito."
-            />
-
-            <ErrorModal
-                isOpen={showError}
-                onClose={() => setShowError(false)}
-                title="Error de Creación"
-                message={apiErrorMsg}
             />
         </div>
     );

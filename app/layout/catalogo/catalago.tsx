@@ -11,12 +11,14 @@ import {
     ChevronUp,
     History,
     Search,
-    CheckCircle2,
-    XCircle,
     Loader2,
 } from "lucide-react";
 // Ajusta esta ruta a donde vivan tus componentes de formulario en el proyecto.
 import FormInput from "../../components/FormInput";
+import Pagination, { PAGE_SIZE } from "../../components/pagination.tsx";
+import Toast, { useToast } from "../../components/Toast .tsx";
+import ErrorModal from "../../components/modals/ErrorModal.tsx";
+import WarningModal from "../../components/modals/WarningModal.tsx";
 import "../../css/catalogo.css";
 import { useAuth } from "../../../src/context/AuthContext";
 import * as catalogosService from "../../../src/services/catalogos.service";
@@ -63,7 +65,6 @@ interface TasaCatalogItem {
 }
 
 type ActiveTab = "familias" | "impuestos" | "margenes";
-type ToastState = { type: "success" | "error"; message: string } | null;
 
 /* ─── Helpers ──────────────────────────────────────────────── */
 const fmtDate = (iso: string) =>
@@ -175,12 +176,10 @@ export default function CatalogosPage() {
     const [impuestos, setImpuestos] = useState<TasaCatalogItem[]>([]);
     const [margenes, setMargenes] = useState<TasaCatalogItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [toast, setToast] = useState<ToastState>(null);
+    const { toast, showToast } = useToast();
 
-    const showToast = (type: "success" | "error", message: string) => {
-        setToast({ type, message });
-        window.setTimeout(() => setToast(null), 3000);
-    };
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
+    const showError = (title: string, message: string) => setErrorModal({ isOpen: true, title, message });
 
     // Carga inicial: trae Familias, Impuestos y Márgenes en paralelo.
     useEffect(() => {
@@ -200,7 +199,7 @@ export default function CatalogosPage() {
                 setMargenes(m);
             } catch (err) {
                 if (!cancelado) {
-                    showToast("error", err instanceof Error ? err.message : "No se pudieron cargar los catálogos.");
+                    showError("Error de carga", err instanceof Error ? err.message : "No se pudieron cargar los catálogos.");
                 }
             } finally {
                 if (!cancelado) setIsLoading(false);
@@ -254,56 +253,34 @@ export default function CatalogosPage() {
                 ) : (
                     <>
                         {tab === "familias" && (
-                            <FamiliasTab familias={familias} setFamilias={setFamilias} showToast={showToast} />
+                            <FamiliasTab familias={familias} setFamilias={setFamilias} showToast={showToast} showError={showError} />
                         )}
                         {tab === "impuestos" && (
-                            <TasaCatalogTab
+                            <TasasTab
+                                tipo="impuesto"
                                 items={impuestos}
                                 setItems={setImpuestos}
                                 showToast={showToast}
-                                entityLabel="Impuesto"
-                                entityLabelPlural="impuestos"
-                                addLabel="Nuevo Impuesto"
-                                searchPlaceholder="Buscar impuesto..."
-                                icon={<Receipt className="w-4 h-4 text-emerald-600" />}
+                                showError={showError}
                                 registradoPor={registradoPor}
-                                service={{
-                                    crear: catalogosService.crearImpuesto,
-                                    actualizarNombre: catalogosService.actualizarNombreImpuesto,
-                                    actualizarTasa: catalogosService.actualizarTasaImpuesto,
-                                    eliminar: catalogosService.eliminarImpuesto,
-                                }}
                             />
                         )}
                         {tab === "margenes" && (
-                            <TasaCatalogTab
+                            <TasasTab
+                                tipo="margen"
                                 items={margenes}
                                 setItems={setMargenes}
                                 showToast={showToast}
-                                entityLabel="Margen"
-                                entityLabelPlural="márgenes"
-                                addLabel="Nuevo Margen"
-                                searchPlaceholder="Buscar margen..."
-                                icon={<DollarSign className="w-4 h-4 text-indigo-600" />}
+                                showError={showError}
                                 registradoPor={registradoPor}
-                                service={{
-                                    crear: catalogosService.crearMargen,
-                                    actualizarNombre: catalogosService.actualizarNombreMargen,
-                                    actualizarTasa: catalogosService.actualizarTasaMargen,
-                                    eliminar: catalogosService.eliminarMargen,
-                                }}
                             />
                         )}
                     </>
                 )}
+                <ErrorModal isOpen={errorModal.isOpen} onClose={() => setErrorModal({ ...errorModal, isOpen: false })} title={errorModal.title} message={errorModal.message} />
             </div>
 
-            {toast && (
-                <div className={`cat-toast tone-${toast.type}`}>
-                    {toast.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                    {toast.message}
-                </div>
-            )}
+            <Toast toast={toast} />
         </div>
     );
 }
@@ -318,10 +295,12 @@ function FamiliasTab({
     familias,
     setFamilias,
     showToast,
+    showError,
 }: {
     familias: Familia[];
     setFamilias: React.Dispatch<React.SetStateAction<Familia[]>>;
     showToast: (type: "success" | "error", message: string) => void;
+    showError: (title: string, message: string) => void;
 }) {
     const [showAdd, setShowAdd] = useState(false);
     const [nombre, setNombre] = useState("");
@@ -329,20 +308,44 @@ function FamiliasTab({
     const [query, setQuery] = useState("");
     const [editId, setEditId] = useState<string | null>(null);
     const [editNombre, setEditNombre] = useState("");
-    const [editDigitos, setEditDigitos] = useState("2");
+    const [editDigitos, setEditDigitos] = useState("");
+    
+    // Warning Modal State
+    const [familiaAEliminar, setFamiliaAEliminar] = useState<Familia | null>(null);
 
     const filtered = familias.filter((f) => f.nombre.toLowerCase().includes(query.toLowerCase()));
+
+    // ── Paginación (6 en 6) — se reinicia a la página 1 cada vez que
+    // cambia la búsqueda, para no quedar en una página vacía. ──
+    const [page, setPage] = useState(1);
+    useEffect(() => {
+        setPage(1);
+    }, [query]);
+    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     const [isSaving, setIsSaving] = useState(false);
 
     const handleAdd = async () => {
         if (!nombre.trim() || !digitos) {
-            showToast("error", "El nombre de la familia es obligatorio.");
+            showError("Campos obligatorios", "El nombre y el código de la familia son obligatorios.");
             return;
         }
         const duplicada = familias.find((f) => f.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
         if (duplicada) {
-            showToast("error", `Ya existe una familia con el nombre "${nombre}".`);
+            showError("Familia duplicada", `Ya existe una familia con el nombre "${nombre}".`);
+            return;
+        }
+        const codigoNum = Number(digitos);
+        if (!Number.isInteger(codigoNum) || codigoNum < 1) {
+            showError("Código inválido", "El código de familia debe ser 01 o mayor.");
+            return;
+        }
+        const codigoDuplicado = familias.find((f) => f.digitos === codigoNum);
+        if (codigoDuplicado) {
+            showError(
+                "Código duplicado",
+                `El código "${formatFamiliaCode(codigoNum)}" ya lo tiene "${codigoDuplicado.nombre}". Elige otro.`
+            );
             return;
         }
         setIsSaving(true);
@@ -351,10 +354,10 @@ function FamiliasTab({
             setFamilias((prev) => [nueva, ...prev]);
             showToast("success", `Familia "${nueva.nombre}" creada.`);
             setNombre("");
-            setDigitos("2");
+            setDigitos("");
             setShowAdd(false);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo crear la familia.");
+            showError("Error al guardar", err instanceof Error ? err.message : "No se pudo crear la familia.");
         } finally {
             setIsSaving(false);
         }
@@ -368,18 +371,31 @@ function FamiliasTab({
 
     const handleSaveEdit = async (f: Familia) => {
         if (!editNombre.trim()) {
-            showToast("error", "El nombre no puede estar vacío.");
+            showError("Campo incompleto", "El nombre no puede estar vacío.");
             return;
         }
         if (!editDigitos) {
-            showToast("error", "El código de familia no puede estar vacío.");
+            showError("Campo incompleto", "El código de familia no puede estar vacío.");
             return;
         }
         const duplicada = familias.find(
             (other) => other.id_familia !== f.id_familia && other.nombre.trim().toLowerCase() === editNombre.trim().toLowerCase()
         );
         if (duplicada) {
-            showToast("error", `Ya existe otra familia con el nombre "${editNombre}".`);
+            showError("Familia duplicada", `Ya existe otra familia con el nombre "${editNombre}".`);
+            return;
+        }
+        const codigoNum = Number(editDigitos);
+        if (!Number.isInteger(codigoNum) || codigoNum < 1) {
+            showError("Código inválido", "El código de familia debe ser 01 o mayor.");
+            return;
+        }
+        const codigoDuplicado = familias.find((other) => other.id_familia !== f.id_familia && other.digitos === codigoNum);
+        if (codigoDuplicado) {
+            showError(
+                "Código duplicado",
+                `El código "${formatFamiliaCode(codigoNum)}" ya lo tiene "${codigoDuplicado.nombre}". Elige otro.`
+            );
             return;
         }
         try {
@@ -394,19 +410,20 @@ function FamiliasTab({
             showToast("success", `Familia "${editNombre}" actualizada.`);
             setEditId(null);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar la familia.");
+            showError("Error al actualizar", err instanceof Error ? err.message : "No se pudo actualizar la familia.");
         }
     };
 
-    const handleDelete = async (f: Familia) => {
-        const confirmado = window.confirm(`¿Eliminar la familia "${f.nombre}"? Esta acción no se puede deshacer.`);
-        if (!confirmado) return;
+    const confirmDelete = async () => {
+        if (!familiaAEliminar) return;
+        const f = familiaAEliminar;
+        setFamiliaAEliminar(null);
         try {
             await catalogosService.eliminarFamilia(f.id_familia);
             setFamilias((prev) => prev.filter((item) => item.id_familia !== f.id_familia));
             showToast("success", `Familia "${f.nombre}" eliminada.`);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo eliminar la familia.");
+            showError("Error al eliminar", err instanceof Error ? err.message : "No se pudo eliminar la familia.");
         }
     };
 
@@ -492,7 +509,7 @@ function FamiliasTab({
                                     </td>
                                 </tr>
                             ) : (
-                                filtered.map((f) =>
+                                paginated.map((f) =>
                                     editId === f.id_familia ? (
                                         <tr key={f.id_familia} style={catRowStyle} {...catRowHoverProps}>
                                             <td style={catTd}>
@@ -553,7 +570,7 @@ function FamiliasTab({
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(f)}
+                                                        onClick={() => setFamiliaAEliminar(f)}
                                                         style={catActionBtnStyle}
                                                         onMouseEnter={catHoverIn("var(--cuh-danger-50)", "var(--cuh-danger)")}
                                                         onMouseLeave={catHoverOut}
@@ -571,6 +588,15 @@ function FamiliasTab({
                     </table>
                 </div>
             </div>
+
+            <Pagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+            <WarningModal
+                isOpen={familiaAEliminar !== null}
+                onClose={() => setFamiliaAEliminar(null)}
+                onConfirm={confirmDelete}
+                title="Eliminar Familia"
+                message={`¿Eliminar la familia "${familiaAEliminar?.nombre}"? Esta acción no se puede deshacer.`}
+            />
         </div>
     );
 }
@@ -582,36 +608,24 @@ function FamiliasTab({
    y abre una nueva (igual que sp_actualizar_tasa_impuesto /
    sp_actualizar_tasa_margen), preservando el historial.
    ═══════════════════════════════════════════════════════════ */
-interface TasaCatalogService {
-    crear: (nombre: string, porcentajeInicial: number, registradoPor: string | null) => Promise<TasaCatalogItem>;
-    actualizarNombre: (id: string, nombre: string) => Promise<void>;
-    actualizarTasa: (id: string, nuevoPorcentaje: number, registradoPor: string | null) => Promise<TasaHistorial>;
-    eliminar: (id: string) => Promise<void>;
-}
-
-function TasaCatalogTab({
+function TasasTab({
+    tipo,
     items,
     setItems,
     showToast,
-    entityLabel,
-    entityLabelPlural,
-    addLabel,
-    searchPlaceholder,
-    icon,
-    service,
+    showError,
     registradoPor,
 }: {
+    tipo: "impuesto" | "margen";
     items: TasaCatalogItem[];
     setItems: React.Dispatch<React.SetStateAction<TasaCatalogItem[]>>;
     showToast: (type: "success" | "error", message: string) => void;
-    entityLabel: string;
-    entityLabelPlural: string;
-    addLabel: string;
-    searchPlaceholder: string;
-    icon: React.ReactNode;
-    service: TasaCatalogService;
+    showError: (title: string, message: string) => void;
     registradoPor: string | null;
 }) {
+    const entityLabel = tipo === "impuesto" ? "Impuesto" : "Margen";
+    const entityLabelPlural = tipo === "impuesto" ? "impuestos" : "márgenes";
+
     const [showAdd, setShowAdd] = useState(false);
     const [nombre, setNombre] = useState("");
     const [porcentaje, setPorcentaje] = useState("");
@@ -624,36 +638,49 @@ function TasaCatalogTab({
     const [newRate, setNewRate] = useState("");
 
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    
+    // Warning Modal State
+    const [tasaAEliminar, setTasaAEliminar] = useState<TasaCatalogItem | null>(null);
 
     const filtered = items.filter((i) => i.nombre.toLowerCase().includes(query.toLowerCase()));
+
+    // ── Paginación (6 en 6) — se reinicia a la página 1 cada vez que
+    // cambia la búsqueda, para no quedar en una página vacía. ──
+    const [page, setPage] = useState(1);
+    useEffect(() => {
+        setPage(1);
+    }, [query]);
+    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     const [isSaving, setIsSaving] = useState(false);
 
     const handleAdd = async () => {
         if (!nombre.trim() || !porcentaje) {
-            showToast("error", `El nombre y el porcentaje son obligatorios para crear un ${entityLabel.toLowerCase()}.`);
+            showError("Campos obligatorios", `El nombre y el porcentaje son obligatorios para crear un ${entityLabel.toLowerCase()}.`);
             return;
         }
         const valor = parseFloat(porcentaje);
         if (Number.isNaN(valor) || valor < 0) {
-            showToast("error", "Ingresa un porcentaje válido.");
+            showError("Valor inválido", "Ingresa un porcentaje válido.");
             return;
         }
         const duplicado = items.find((i) => i.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
         if (duplicado) {
-            showToast("error", `Ya existe un ${entityLabel.toLowerCase()} con el nombre "${nombre}".`);
+            showError("Duplicado", `Ya existe un ${entityLabel.toLowerCase()} con el nombre "${nombre}".`);
             return;
         }
         setIsSaving(true);
         try {
-            const nuevo = await service.crear(nombre.trim(), valor, registradoPor);
+            const nuevo = tipo === "impuesto" 
+                ? await catalogosService.crearImpuesto(nombre.trim(), valor, registradoPor)
+                : await catalogosService.crearMargen(nombre.trim(), valor, registradoPor);
             setItems((prev) => [nuevo, ...prev]);
             showToast("success", `${entityLabel} "${nuevo.nombre}" creado (${porcentaje}%).`);
             setNombre("");
             setPorcentaje("");
             setShowAdd(false);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : `No se pudo crear el ${entityLabel.toLowerCase()}.`);
+            showError("Error al guardar", err instanceof Error ? err.message : `No se pudo crear el ${entityLabel.toLowerCase()}.`);
         } finally {
             setIsSaving(false);
         }
@@ -666,27 +693,32 @@ function TasaCatalogTab({
 
     const handleSaveEdit = async (item: TasaCatalogItem) => {
         if (!editNombre.trim()) {
-            showToast("error", "El nombre no puede estar vacío.");
+            showError("Campo incompleto", "El nombre no puede estar vacío.");
             return;
         }
         try {
-            await service.actualizarNombre(item.id, editNombre.trim());
+            if (tipo === "impuesto") await catalogosService.actualizarNombreImpuesto(item.id, editNombre.trim());
+            else await catalogosService.actualizarNombreMargen(item.id, editNombre.trim());
+            
             setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nombre: editNombre.trim() } : i)));
             showToast("success", `${entityLabel} actualizado a "${editNombre}".`);
             setEditId(null);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar el nombre.");
+            showError("Error al actualizar", err instanceof Error ? err.message : "No se pudo actualizar el nombre.");
         }
     };
 
     const handleSaveRate = async (item: TasaCatalogItem) => {
         const value = parseFloat(newRate);
         if (Number.isNaN(value) || value < 0) {
-            showToast("error", "Ingresa un porcentaje válido.");
+            showError("Valor inválido", "Ingresa un porcentaje válido.");
             return;
         }
         try {
-            const nuevaFila = await service.actualizarTasa(item.id, value, registradoPor);
+            const nuevaFila = tipo === "impuesto" 
+                ? await catalogosService.actualizarTasaImpuesto(item.id, value, registradoPor)
+                : await catalogosService.actualizarTasaMargen(item.id, value, registradoPor);
+            
             const closedAt = nuevaFila.vigente_desde;
             setItems((prev) =>
                 prev.map((i) =>
@@ -705,19 +737,22 @@ function TasaCatalogTab({
             setRateFormId(null);
             setNewRate("");
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo actualizar la tasa.");
+            showError("Error al actualizar tasa", err instanceof Error ? err.message : "No se pudo actualizar la tasa.");
         }
     };
 
-    const handleDelete = async (item: TasaCatalogItem) => {
-        const confirmado = window.confirm(`¿Eliminar "${item.nombre}"? Esta acción no se puede deshacer.`);
-        if (!confirmado) return;
+    const confirmDelete = async () => {
+        if (!tasaAEliminar) return;
+        const item = tasaAEliminar;
+        setTasaAEliminar(null);
         try {
-            await service.eliminar(item.id);
+            if (tipo === "impuesto") await catalogosService.eliminarImpuesto(item.id);
+            else await catalogosService.eliminarMargen(item.id);
+            
             setItems((prev) => prev.filter((i) => i.id !== item.id));
             showToast("success", `${entityLabel} "${item.nombre}" eliminado.`);
         } catch (err) {
-            showToast("error", err instanceof Error ? err.message : "No se pudo eliminar.");
+            showError("Error al eliminar", err instanceof Error ? err.message : "No se pudo eliminar.");
         }
     };
 
@@ -727,14 +762,14 @@ function TasaCatalogTab({
                 <FormInput
                     value={query}
                     onChange={setQuery}
-                    placeholder={searchPlaceholder}
+                    placeholder={`Buscar ${entityLabel.toLowerCase()}...`}
                     iconLeft={<Search className="w-4 h-4 cat-search-icon" />}
                     wrapperClassName="cat-search-wrap"
                     className="form-input cat-search-input"
                 />
                 <button onClick={() => setShowAdd(!showAdd)} className="btn btn-primary btn-sm">
                     <Plus className="w-4 h-4" />
-                    {addLabel}
+                    {tipo === "impuesto" ? "Nuevo Impuesto" : "Nuevo Margen"}
                 </button>
             </div>
 
@@ -748,7 +783,7 @@ function TasaCatalogTab({
                         <FormInput
                             label="Nombre"
                             required
-                            placeholder={entityLabel === "Impuesto" ? "Ej. IVA" : "Ej. Margen Estándar"}
+                            placeholder={tipo === "impuesto" ? "Ej. IVA" : "Ej. Margen Estándar"}
                             value={nombre}
                             onChange={setNombre}
                         />
@@ -791,7 +826,7 @@ function TasaCatalogTab({
                                 <tr>
                                     <td colSpan={5}>
                                         <div className="cat-empty-state">
-                                            {icon}
+                                            {tipo === "impuesto" ? <Receipt className="w-10 h-10" /> : <DollarSign className="w-10 h-10" />}
                                             <p className="cat-empty-state-title">
                                                 {items.length === 0 ? `No hay ${entityLabelPlural} registrados` : "Sin resultados"}
                                             </p>
@@ -802,7 +837,7 @@ function TasaCatalogTab({
                                     </td>
                                 </tr>
                             ) : (
-                                filtered.map((item) => {
+                                paginated.map((item) => {
                                     const vigente = tasaVigente(item.historial);
                                     const isExpanded = expandedId === item.id;
                                     const isEditingRate = rateFormId === item.id;
@@ -927,7 +962,7 @@ function TasaCatalogTab({
                                                                 <Edit2 className="w-4 h-4" />
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDelete(item)}
+                                                                onClick={() => setTasaAEliminar(item)}
                                                                 style={catActionBtnStyle}
                                                                 onMouseEnter={catHoverIn("var(--cuh-danger-50)", "var(--cuh-danger)")}
                                                                 onMouseLeave={catHoverOut}
@@ -971,6 +1006,15 @@ function TasaCatalogTab({
                     </table>
                 </div>
             </div>
+
+            <Pagination page={page} totalItems={filtered.length} onPageChange={setPage} />
+            <WarningModal
+                isOpen={tasaAEliminar !== null}
+                onClose={() => setTasaAEliminar(null)}
+                onConfirm={confirmDelete}
+                title={`Eliminar ${entityLabel}`}
+                message={`¿Estás seguro de que deseas eliminar el ${entityLabel.toLowerCase()} "${tasaAEliminar?.nombre}"? Esta acción no se puede deshacer.`}
+            />
         </div>
     );
 }

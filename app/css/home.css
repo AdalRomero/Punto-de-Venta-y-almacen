@@ -335,6 +335,24 @@
   text-transform: uppercase;
 }
 
+.home-finance-bar__amount {
+  display: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cuh-text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.home-finance-bar:hover .home-finance-bar__amount {
+  display: block;
+}
+
+.home-finance-bar:hover .home-finance-bar__fill {
+  opacity: 0.85;
+  background: var(--cuh-primary);
+}
+
 /* ─── Alertas de inventario (bajo stock / agotado / caducado) ── */
 .home-alerts-card__list {
   max-height: 168px;
@@ -379,15 +397,21 @@
 }
 
 .stock-alert-row__icon.low {
+  background: var(--cuh-danger-bg, rgba(214, 88, 88, 0.12));
+  color: var(--cuh-danger);
+}
+
+.stock-alert-row__icon.expiring {
   background: var(--cuh-warning-bg);
   color: var(--cuh-warning);
 }
 
 .stock-alert-row__icon.out,
 .stock-alert-row__icon.expired {
-  background: var(--cuh-danger-bg, rgba(214, 88, 88, 0.12));
-  color: var(--cuh-danger);
+  background: #E5E7EB;
+  color: var(--cuh-text-dark);
 }
+
 
 .stock-alert-row__info {
   flex: 1;
@@ -409,15 +433,18 @@
   margin-top: 1px;
 }
 
-/* ─── Actividad reciente ───────────────────────── */
+/* ─── Actividad reciente — nuevo diseño ────────── */
 .home-activity-card__list {
-  max-height: 168px;
+  max-height: 240px;
   overflow-y: auto;
   padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .home-activity-card__list::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 
 .home-activity-card__list::-webkit-scrollbar-thumb {
@@ -425,61 +452,163 @@
   border-radius: 4px;
 }
 
-.home-activity-row {
+.home-activity-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--cuh-border-light);
+  gap: 8px;
+  padding: 24px 0;
+  color: var(--cuh-text-muted);
+  font-size: 13px;
 }
 
-.home-activity-row:first-of-type {
-  padding-top: 0;
+/* ── Item card ── */
+.home-act-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--cuh-bg);
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: default;
 }
 
-.home-activity-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+.home-act-item:hover {
+  border-color: var(--cuh-border);
+  background: var(--cuh-bg-white);
 }
 
-.home-activity__icon {
-  width: 32px;
-  height: 32px;
+.home-act-item__icon {
+  width: 34px;
+  height: 34px;
   border-radius: 9px;
-  background: var(--cuh-primary-light);
-  color: var(--cuh-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
-.home-activity__info {
+.home-act-item__body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.home-activity__name {
+.home-act-item__title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--cuh-text-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.home-activity__meta {
+.home-act-item__desc {
   font-size: 11.5px;
   color: var(--cuh-text-muted);
-  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.home-activity__amount {
-  font-size: 13px;
-  font-weight: 700;
+.home-act-item__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.home-act-item__time {
+  font-size: 10.5px;
+  color: var(--cuh-text-light);
+  font-weight: 500;
+}
+
+.home-act-item__actor {
+  font-size: 10.5px;
+  color: var(--cuh-text-light);
+}
+
+.home-act-item__amount {
+  font-size: 13.5px;
+  font-weight: 800;
   color: var(--cuh-text-dark);
   white-space: nowrap;
   flex-shrink: 0;
+  align-self: center;
+}
+
+/* ── Badges by type ── */
+.home-act-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.act-badge--venta.home-act-badge {
+  background: rgba(var(--cuh-primary-rgb), 0.12);
+  color: var(--cuh-primary);
+}
+
+.act-badge--venta.home-act-item__icon {
+  background: rgba(var(--cuh-primary-rgb), 0.12);
+  color: var(--cuh-primary);
+}
+
+.act-badge--producto.home-act-badge {
+  background: rgba(60, 160, 100, 0.12);
+  color: #2a8a5a;
+}
+
+.act-badge--producto.home-act-item__icon {
+  background: rgba(60, 160, 100, 0.12);
+  color: #2a8a5a;
+}
+
+.act-badge--entrada.home-act-badge {
+  background: rgba(80, 130, 220, 0.12);
+  color: #3060c0;
+}
+
+.act-badge--entrada.home-act-item__icon {
+  background: rgba(80, 130, 220, 0.12);
+  color: #3060c0;
+}
+
+.act-badge--devolucion.home-act-badge {
+  background: rgba(var(--cuh-warning-rgb, 200,140,0), 0.12);
+  color: var(--cuh-warning-text, #8a6200);
+}
+
+.act-badge--devolucion.home-act-item__icon {
+  background: rgba(200, 140, 0, 0.12);
+  color: #8a6200;
+}
+
+.act-badge--usuario.home-act-badge {
+  background: rgba(120, 80, 200, 0.12);
+  color: #6040a0;
+}
+
+.act-badge--usuario.home-act-item__icon {
+  background: rgba(120, 80, 200, 0.12);
+  color: #6040a0;
+}
+
+.act-badge--otro.home-act-badge,
+.act-badge--otro.home-act-item__icon {
+  background: var(--cuh-border-light);
+  color: var(--cuh-text-muted);
 }
 
 /* ─── Badge de estado (reutilizado por Actividad y Alertas) ── */
@@ -505,6 +634,11 @@
 .home-status-badge.is-danger {
   color: var(--cuh-danger-text, var(--cuh-danger));
   background: var(--cuh-danger-bg, rgba(214, 88, 88, 0.12));
+}
+
+.home-status-badge.is-black {
+  color: var(--cuh-text-dark);
+  background: #E5E7EB;
 }
 
 /* =============================================

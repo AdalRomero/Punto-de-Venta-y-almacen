@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import FormInput from '../../components/FormInput';
 import FormSelect from '../../components/FormSelect';
 import { UserPlus, ArrowLeft, AlertCircle } from 'lucide-react';
-import ErrorModal from '../../components/modals/ErrorModal';
-import SuccessModal from '../../components/modals/SuccessModal';
+// Modals removidos a favor de Toast
 import { usuarioDisponible, correoAccesoDisponible, crearUsuario } from '../../../src/services/user.service.ts';
 import '../../css/newusers.css';
 
-export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
+export default function NuevoUsuario({ onBack, showToast, showError }: { onBack?: () => void; showToast?: (type: 'success'|'error', msg: string) => void; showError?: (title: string, msg: string) => void }) {
     const [enviando, setEnviando] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -32,12 +31,7 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
     const [usernameError, setUsernameError] = useState('');
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
-    const [modalState, setModalState] = useState({
-        success: false,
-        error: false,
-        errorMessage: '',
-        successMessage: '',
-    });
+
 
     // Auto-generación de username a partir de nombres + apellido paterno
     useEffect(() => {
@@ -146,11 +140,7 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
             const campoVacio = camposObligatorios.find((c) => !c.campo || c.campo.trim() === '');
 
             if (campoVacio) {
-                setModalState({
-                    ...modalState,
-                    error: true,
-                    errorMessage: `El campo "${campoVacio.nombre}" es obligatorio y no puede estar vacío.`,
-                });
+                showError?.('Campos incompletos', `El campo "${campoVacio.nombre}" es obligatorio y no puede estar vacío.`);
                 return;
             }
 
@@ -158,20 +148,16 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
             // combinación específica (letras, números y/o especiales
             // valen igual, lo único que importa es la longitud).
             if (formData.password.length < 8) {
-                setModalState({
-                    ...modalState,
-                    error: true,
-                    errorMessage: 'La contraseña debe tener al menos 8 caracteres.',
-                });
+                showError?.('Contraseña corta', 'La contraseña debe tener al menos 8 caracteres.');
                 return;
             }
 
             if (formData.password !== formData.confirmarPassword) {
-                setModalState({ ...modalState, error: true, errorMessage: 'Las contraseñas no coinciden.' });
+                showError?.('Error de validación', 'Las contraseñas no coinciden.');
                 return;
             }
             if (usernameError) {
-                setModalState({ ...modalState, error: true, errorMessage: 'Corrija los errores antes de continuar.' });
+                showError?.('Error de validación', 'Corrija los errores antes de continuar.');
                 return;
             }
 
@@ -187,11 +173,11 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
             ]);
 
             if (!usuarioLibre) {
-                setModalState({ ...modalState, error: true, errorMessage: 'Ese nombre de usuario ya está en uso por otro usuario.' });
+                showError?.('Usuario ocupado', 'Ese nombre de usuario ya está en uso por otro usuario.');
                 return;
             }
             if (!correoLibre) {
-                setModalState({ ...modalState, error: true, errorMessage: 'Ese correo de acceso ya está en uso por otro usuario.' });
+                showError?.('Correo ocupado', 'Ese correo de acceso ya está en uso por otro usuario.');
                 return;
             }
 
@@ -209,7 +195,8 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
                 direccion: formData.direccion || null,
             });
 
-            setModalState({ ...modalState, success: true, successMessage: 'Usuario creado exitosamente.' });
+            showToast?.('success', 'Usuario creado exitosamente.');
+            if (onBack) onBack();
         } catch (err) {
             // Última línea de defensa: si dos usuarios se registran en el
             // mismo instante, ambos pueden pasar la verificación de arriba
@@ -221,24 +208,17 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
                 err instanceof Error &&
                 (/ER_DUP_ENTRY/i.test(err.message) || /1062/.test(err.message) || /duplicate/i.test(err.message));
 
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: esDuplicado
-                    ? 'El nombre de usuario o el correo de acceso ya fueron tomados por otro registro. Verifica los datos e intenta de nuevo.'
-                    : err instanceof Error
-                        ? err.message
-                        : 'Error al crear el usuario.',
-            });
+            showError?.(esDuplicado ? 'Registro duplicado' : 'Error al crear', esDuplicado
+                ? 'El nombre de usuario o el correo de acceso ya fueron tomados por otro registro. Verifica los datos e intenta de nuevo.'
+                : err instanceof Error
+                    ? err.message
+                    : 'Error al crear el usuario.');
         } finally {
             setEnviando(false);
         }
     };
 
-    const handleSuccessClose = () => {
-        setModalState({ ...modalState, success: false });
-        if (onBack) onBack();
-    };
+
 
     return (
         <>
@@ -425,19 +405,6 @@ export default function NuevoUsuario({ onBack }: { onBack?: () => void }) {
                     </div>
                 </form>
             </div>
-
-            <ErrorModal
-                isOpen={modalState.error}
-                onClose={() => setModalState({ ...modalState, error: false })}
-                title="Error"
-                message={modalState.errorMessage}
-            />
-            <SuccessModal
-                isOpen={modalState.success}
-                onClose={handleSuccessClose}
-                title="¡Éxito!"
-                message={modalState.successMessage}
-            />
         </>
     );
 }

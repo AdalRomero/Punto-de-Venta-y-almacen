@@ -3,8 +3,6 @@ import { Mail, ArrowLeft } from 'lucide-react';
 import FormInput from '../../components/FormInput';
 import { MailIcon, ErrorIcon, SpinnerIcon } from '../../components/Icons';
 import WarningModal from '../../components/modals/WarningModal';
-import SuccessModal from '../../components/modals/SuccessModal';
-import ErrorModal from '../../components/modals/ErrorModal';
 import {
     type Usuario,
     correoAccesoDisponible,
@@ -36,9 +34,10 @@ interface CambiarCorreoProps {
     // Se dispara al terminar con éxito, con el nuevo correo de acceso,
     // para reflejarlo de inmediato en el estado local del padre.
     onSuccess?: (nuevoCorreoAcceso: string) => void;
+    showError?: (title: string, message: string) => void;
 }
 
-export default function CambiarCorreo({ usuario, onBack, onSuccess }: CambiarCorreoProps) {
+export default function CambiarCorreo({ usuario, onBack, onSuccess, showError }: CambiarCorreoProps) {
     // Estados del formulario
     const [email, setEmail] = useState('');
     const [confirmEmail, setConfirmEmail] = useState('');
@@ -47,9 +46,6 @@ export default function CambiarCorreo({ usuario, onBack, onSuccess }: CambiarCor
 
     // Estados de los modales
     const [showWarning, setShowWarning] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [showError, setShowError] = useState(false);
-    const [apiErrorMsg, setApiErrorMsg] = useState('');
 
     // Resguardo: este flujo solo aplica a perfiles que ya tienen
     // credenciales activas (mismo guard que detailsuser.tsx).
@@ -84,26 +80,24 @@ export default function CambiarCorreo({ usuario, onBack, onSuccess }: CambiarCor
         try {
             const correoLibre = await correoAccesoDisponible(correoLimpio);
             if (!correoLibre) {
-                setApiErrorMsg('Ese correo de acceso ya está en uso por otro usuario.');
-                setShowError(true);
+                showError?.('Error', 'Ese correo de acceso ya está en uso por otro usuario.');
                 return;
             }
 
             await cambiarCorreoAcceso(usuario.id_perfil_info, correoLimpio);
-            setShowSuccess(true);
+            onSuccess?.(correoLimpio);
+            onBack();
         } catch (err) {
             const esDuplicado =
                 err instanceof Error &&
                 (/ER_DUP_ENTRY/i.test(err.message) || /1062/.test(err.message) || /duplicate/i.test(err.message));
 
-            setApiErrorMsg(
-                esDuplicado
-                    ? 'Ese correo de acceso ya fue tomado por otro registro.'
-                    : err instanceof Error
-                        ? err.message
-                        : 'Ocurrió un error al actualizar el correo.'
+            showError?.('Error de Actualización', esDuplicado
+                ? 'Ese correo de acceso ya fue tomado por otro registro.'
+                : err instanceof Error
+                    ? err.message
+                    : 'Ocurrió un error al actualizar el correo.'
             );
-            setShowError(true);
         } finally {
             setLoading(false);
         }
@@ -188,34 +182,8 @@ export default function CambiarCorreo({ usuario, onBack, onSuccess }: CambiarCor
                 isOpen={showWarning}
                 onClose={() => setShowWarning(false)}
                 onConfirm={handleUpdate}
-                title="Confirmar Cambio de Correo"
-                message={
-                    <>
-                        ¿Estás seguro de cambiar el correo de acceso a <strong>{email}</strong>? El usuario deberá usar este nuevo correo para iniciar sesión.
-                    </>
-                }
-            />
-
-            <SuccessModal
-                isOpen={showSuccess}
-                onClose={() => {
-                    setShowSuccess(false);
-                    onSuccess?.(email.trim());
-                    onBack();
-                }}
-                title="¡Actualización Exitosa!"
-                message={
-                    <>
-                        El correo de acceso se actualizó correctamente a: <strong>{email}</strong>.
-                    </>
-                }
-            />
-
-            <ErrorModal
-                isOpen={showError}
-                onClose={() => setShowError(false)}
-                title="Error de Actualización"
-                message={apiErrorMsg}
+                title="¿Actualizar correo de acceso?"
+                message="El usuario usará este nuevo correo para iniciar sesión a partir de este momento."
             />
         </div>
     );

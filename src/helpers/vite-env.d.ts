@@ -275,6 +275,22 @@ declare global {
       created: string;
     }
 
+    /* ─── DEVOLUCIONES ────────────────────────────────────── */
+    interface Devolucion {
+      id_devolucion: string;
+      id_producto: string;
+      cantidad_devuelta: number;
+      precio_unitario: number;
+      monto_devuelto: number; // columna generada, solo lectura
+      motivo: 'producto_danado' | 'producto_caducado' | 'error_cobro' | 'cliente_insatisfecho' | 'otro';
+      observaciones: string | null;
+      accion: 'reembolso' | 'nota_credito' | 'cambio';
+      restock: boolean;
+      id_ajuste: string | null;
+      registrado_por: string | null;
+      created: string;
+    }
+
     /* ─── AVISOS ──────────────────────────────────────────── */
     interface Aviso {
       id_aviso: string;
@@ -441,4 +457,21 @@ declare global {
       };
     };
   }
+}
+
+// ─── Tipos de base de datos: Notificaciones ──────────────────────────────────
+// Corresponde a la tabla Notificacion del esquema la_cuchilla_final.sql
+// (campana de notificaciones — feed de eventos efímeros, no semáforos de stock).
+export interface Notificacion {
+    id_notificacion: string;
+    titulo: string;
+    descripcion: string;
+    tipo: 'info' | 'warning' | 'alert' | 'success';
+    prioridad?: 'baja' | 'media' | 'alto' | 'urgente' | null;
+    is_read: boolean;
+    is_completed: boolean;
+    id_referencia?: string | null;
+    tabla_referencia?: string | null;
+    id_perfil_info?: string | null;
+    created: string;
 }

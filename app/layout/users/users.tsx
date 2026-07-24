@@ -4,12 +4,12 @@ import FormSelect from '../../components/FormSelect';
 import { UserPlus, Search, ShieldCheck, ShieldAlert } from 'lucide-react';
 import UserCard from '../../components/UserCard';
 import ErrorModal from '../../components/modals/ErrorModal';
-import SuccessModal from '../../components/modals/SuccessModal';
 import WarningModal from '../../components/modals/WarningModal';
 import NuevoUsuario from './newusers';
 import DetalleUsuario from './detailsuser';
-import AsignarCredenciales from '../auth/Credentials.tsx';
+import AsignarCredenciales from '../auth/credentials.tsx';
 import { listarUsuarios, revocarCredenciales, type Usuario } from '../../../src/services/user.service.ts';
+import Toast, { useToast } from '../../components/Toast .tsx';
 import '../../css/user.css';
 
 /* ─────────────────────────────────────────────────────────────
@@ -28,29 +28,24 @@ export default function Usuarios() {
     const [listaUsuarios, setListaUsuarios] = useState<Usuario[]>([]);
     const [cargando, setCargando] = useState(true);
 
+    // Estado para mostrar errores
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
+    const showError = (title: string, message: string) => setErrorModal({ isOpen: true, title, message });
+
     // Paginación por scroll: se muestran de 9 en 9 y se van revelando
     // más conforme el usuario llega al final de la lista.
     const PAGE_SIZE = 9;
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-    const [modalState, setModalState] = useState({
-        success: false,
-        error: false,
-        errorMessage: '',
-        successMessage: '',
-    });
+    const { toast, showToast } = useToast();
 
     const cargarUsuarios = async () => {
         try {
             const rows = await listarUsuarios();
             setListaUsuarios(rows);
         } catch (err) {
-            setModalState((prev) => ({
-                ...prev,
-                error: true,
-                errorMessage: err instanceof Error ? err.message : 'No se pudo cargar la lista de usuarios.',
-            }));
+            showToast("error", err instanceof Error ? err.message : 'No se pudo cargar la lista de usuarios.');
         } finally {
             setCargando(false);
         }
@@ -167,29 +162,17 @@ export default function Usuarios() {
         // handleSolicitarEliminar ya filtra esto antes de abrir el
         // modal, pero se valida aquí también por si acaso.
         if (!usuario.auth_usuario) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: 'Este perfil no tiene credenciales activas; no hay nada que eliminar.',
-            });
+            showError("Error", 'Este perfil no tiene credenciales activas; no hay nada que eliminar.');
             return;
         }
 
         try {
             await revocarCredenciales(usuario.id_perfil_info);
-            setModalState({
-                ...modalState,
-                success: true,
-                successMessage: 'Acceso revocado y credenciales eliminadas exitosamente del servidor.',
-            });
+            showToast("success", 'Acceso revocado y credenciales eliminadas exitosamente del servidor.');
             // No hace falta actualizar listaUsuarios a mano: revocarCredenciales
             // dispara "db:changed" y la suscripción de arriba refresca sola.
         } catch (err) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: err instanceof Error ? err.message : 'No se pudo revocar el acceso.',
-            });
+            showError("Error al Revocar", err instanceof Error ? err.message : 'No se pudo revocar el acceso.');
         }
     };
 
@@ -197,11 +180,7 @@ export default function Usuarios() {
     // no tiene credenciales, no tiene caso preguntar "¿revocar acceso?".
     const handleSolicitarEliminar = (usuario: Usuario) => {
         if (!usuario.auth_usuario) {
-            setModalState({
-                ...modalState,
-                error: true,
-                errorMessage: 'Este perfil no tiene credenciales activas; no hay nada que eliminar.',
-            });
+            showError("Error", 'Este perfil no tiene credenciales activas; no hay nada que eliminar.');
             return;
         }
         setUsuarioAEliminar(usuario);
@@ -214,29 +193,47 @@ export default function Usuarios() {
     };
 
     if (showNewUser) {
-        return <NuevoUsuario onBack={() => setShowNewUser(false)} />;
+        return (
+            <>
+                <NuevoUsuario onBack={() => setShowNewUser(false)} showToast={showToast} showError={showError} />
+                <Toast toast={toast} />
+                <ErrorModal isOpen={errorModal.isOpen} onClose={() => setErrorModal({ ...errorModal, isOpen: false })} title={errorModal.title} message={errorModal.message} />
+            </>
+        );
     }
 
     if (usuarioParaCredenciales) {
         return (
-            <AsignarCredenciales
-                usuario={usuarioParaCredenciales}
-                onBack={() => setUsuarioParaCredenciales(null)}
-                onSuccess={() => {
-                    setUsuarioParaCredenciales(null);
-                    // No hace falta recargar la lista a mano: asignarCredenciales
-                    // dispara "db:changed" y la suscripción de arriba refresca sola.
-                }}
-            />
+            <>
+                <AsignarCredenciales
+                    usuario={usuarioParaCredenciales}
+                    onBack={() => setUsuarioParaCredenciales(null)}
+                    onSuccess={() => {
+                        setUsuarioParaCredenciales(null);
+                        showToast("success", "Credenciales asignadas correctamente.");
+                        // No hace falta recargar la lista a mano: asignarCredenciales
+                        // dispara "db:changed" y la suscripción de arriba refresca sola.
+                    }}
+                    showError={showError}
+                />
+                <Toast toast={toast} />
+                <ErrorModal isOpen={errorModal.isOpen} onClose={() => setErrorModal({ ...errorModal, isOpen: false })} title={errorModal.title} message={errorModal.message} />
+            </>
         );
     }
 
     if (usuarioSeleccionado) {
         return (
-            <DetalleUsuario
-                usuario={usuarioSeleccionado}
-                onBack={() => setUsuarioSeleccionado(null)}
-            />
+            <>
+                <DetalleUsuario
+                    usuario={usuarioSeleccionado}
+                    onBack={() => setUsuarioSeleccionado(null)}
+                    showToast={showToast}
+                    showError={showError}
+                />
+                <Toast toast={toast} />
+                <ErrorModal isOpen={errorModal.isOpen} onClose={() => setErrorModal({ ...errorModal, isOpen: false })} title={errorModal.title} message={errorModal.message} />
+            </>
         );
     }
 
@@ -367,18 +364,13 @@ export default function Usuarios() {
                 title="Revocar Acceso por Completo"
                 message={`¿Estás seguro de que deseas eliminar permanentemente las credenciales de ${usuarioAEliminar?.nombres} ${usuarioAEliminar?.apellido_paterno}? Las credenciales de acceso se borrarán del servidor de autenticación de inmediato. El perfil se mandará al fondo de la lista para conservar su historial.`}
             />
-            <ErrorModal
-                isOpen={modalState.error}
-                onClose={() => setModalState({ ...modalState, error: false })}
-                title="Error"
-                message={modalState.errorMessage}
+            <ErrorModal 
+                isOpen={errorModal.isOpen} 
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })} 
+                title={errorModal.title} 
+                message={errorModal.message} 
             />
-            <SuccessModal
-                isOpen={modalState.success}
-                onClose={() => setModalState({ ...modalState, success: false })}
-                title="¡Éxito!"
-                message={modalState.successMessage}
-            />
+            <Toast toast={toast} />
         </>
     );
 }

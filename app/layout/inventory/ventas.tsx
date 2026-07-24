@@ -1,6 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FormInput from "../../components/FormInput";
 import FormSelect from "../../components/FormSelect";
+import ErrorModal from "../../components/modals/ErrorModal";
+import WarningModal from "../../components/modals/WarningModal";
+import Toast, { useToast } from "../../components/Toast .tsx";
+import Pagination, { PAGE_SIZE } from "../../components/pagination";
+import Devoluciones, { type DevolucionPayload } from "../../components/add/devoluciones";
+import type { ProductoRow } from "../../components/add/addproducto";
 import {
     Search,
     ShoppingCart,
@@ -9,46 +15,40 @@ import {
     X,
     PackageX,
     Undo2,
+    Banknote,
+    CreditCard,
+    ArrowLeft,
+    CheckCircle2,
+    Loader2,
+    Percent,
+    DollarSign,
 } from "lucide-react";
 import "../../css/ventas.css";
+import { registrarVenta } from "../../../src/services/ventas.service";
+import { registrarDevolucion } from "../../../src/services/devoluciones.service";
+import { listarProductosInventario, listarProductosParaModal } from "../../../src/services/inventory.service";
 
 /* ─────────────────────────────────────────────────────────────
-   Tipos y datos de muestra
+   Tipos
+   El catálogo ya NO es mock: sale de listarProductosInventario()
+   (mismo servicio que ya usa Inventory.tsx), que trae familia_nombre
+   y cantidad_total — justo lo que necesitan las tarjetas de producto
+   (nombre de familia + stock disponible), a diferencia de ProductoRow
+   (el shape que usan los modales), que no trae ninguno de los dos.
 ──────────────────────────────────────────────────────────────── */
-interface MockProductoVenta {
+interface ProductoVenta {
     id: string;
     nombre: string;
     codigoInterno: string;
-    codigoAlterno: string | null;
+    codigoAlterno: string;
     familia: string;
     precio: number;
     stock: number;
+    alertLevelStock: 'green' | 'yellow' | 'red' | 'black' | 'none';
 }
 
-const MOCK_PRODUCTOS: MockProductoVenta[] = [
-    { id: "1", nombre: "Aceite Vegetal La Gloria 1L", codigoInterno: "ACE-001", codigoAlterno: "7501234567890", familia: "Aceites y Grasas", precio: 42.5, stock: 320 },
-    { id: "2", nombre: "Frijol Bayo Granel 1kg", codigoInterno: "FRJ-002", codigoAlterno: null, familia: "Granos y Semillas", precio: 28.0, stock: 85 },
-    { id: "3", nombre: "Leche Entera Lala 1L", codigoInterno: "LCH-014", codigoAlterno: "7501055310018", familia: "Lácteos", precio: 24.5, stock: 48 },
-    { id: "4", nombre: "Harina Selecta 1kg", codigoInterno: "HAR-007", codigoAlterno: "7501020514029", familia: "Harinas y Masas", precio: 18.9, stock: 12 },
-    { id: "5", nombre: "Sardina Coppelia 425g", codigoInterno: "LAT-003", codigoAlterno: "7501008803109", familia: "Latas y Conservas", precio: 35.0, stock: 6 },
-    { id: "6", nombre: "Azúcar Morena 1kg", codigoInterno: "AZU-005", codigoAlterno: null, familia: "Endulzantes", precio: 22.0, stock: 0 },
-    { id: "7", nombre: "Atún Van Camps 140g", codigoInterno: "LAT-009", codigoAlterno: "7501008805103", familia: "Latas y Conservas", precio: 19.5, stock: 200 },
-    { id: "8", nombre: "Detergente Roma 500g", codigoInterno: "LIM-011", codigoAlterno: "7501013310027", familia: "Limpieza", precio: 16.0, stock: 54 },
-    { id: "9", nombre: "Jabón Zote Rosa 400g", codigoInterno: "LIM-014", codigoAlterno: "7501006508101", familia: "Limpieza", precio: 14.5, stock: 40 },
-    { id: "10", nombre: "Arroz Morelos 1kg", codigoInterno: "GRS-003", codigoAlterno: "7501234500012", familia: "Granos y Semillas", precio: 21.0, stock: 95 },
-    { id: "11", nombre: "Mayonesa McCormick 390g", codigoInterno: "SAL-002", codigoAlterno: "7501008501104", familia: "Salsas y Aderezos", precio: 38.0, stock: 30 },
-    { id: "12", nombre: "Refresco Cola 600ml", codigoInterno: "BEB-021", codigoAlterno: "7501055363014", familia: "Bebidas", precio: 15.0, stock: 3 },
-];
-
-const FAMILIAS = Array.from(new Set(MOCK_PRODUCTOS.map((p) => p.familia))).map(
-    (nombre, idx) => ({
-        nombre,
-        codigo: String(idx + 1).padStart(2, "0"),
-    })
-);
-
 interface CartItem {
-    producto: MockProductoVenta;
+    producto: ProductoVenta;
     cantidad: number;
 }
 
@@ -63,29 +63,98 @@ function formatMoney(n: number): string {
    Componente principal — sólo visual, sin lógica real de venta
 ──────────────────────────────────────────────────────────────── */
 export default function Ventas() {
+    const [productos, setProductos] = useState<ProductoVenta[]>([]);
+    const [loadingProductos, setLoadingProductos] = useState(true);
+    const [errorProductos, setErrorProductos] = useState<string | null>(null);
+
+    // Catálogo aparte, en el shape ProductoRow que pide el modal de
+    // Devoluciones (listarProductosInventario trae familia/stock pero
+    // no todo lo que ProductoRow exige; listarProductosParaModal sí).
+    const [productosDevolucion, setProductosDevolucion] = useState<ProductoRow[]>([]);
+    const [devolucionesAbierto, setDevolucionesAbierto] = useState(false);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [filterFamilia, setFilterFamilia] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
     const [cart, setCart] = useState<CartItem[]>([]);
 
-    /* Búsqueda: por nombre, código interno, código alterno o familia */
+    // Código alterno escaneado que está registrado en más de un producto:
+    // no se puede agregar automáticamente, así que se avisa por modal
+    // mientras el catálogo de la izquierda ya quedó filtrado a esos productos.
+    const [codigoAlternoDuplicado, setCodigoAlternoDuplicado] = useState<string | null>(null);
+
+    /* ── Carga del catálogo real (conectado a la BD) ── */
+    const cargarProductos = async () => {
+        setLoadingProductos(true);
+        setErrorProductos(null);
+        try {
+            const rows = await listarProductosInventario();
+            setProductos(
+                rows
+                    .filter((r) => r.activo)
+                    .map((r) => ({
+                        id: r.id_producto,
+                        nombre: r.nombre,
+                        codigoInterno: r.codigo_interno ?? "s/código",
+                        // Códigos alternos viven en la tabla aparte Codigos_Alternos
+                        // (1 producto -> N códigos), no en Producto/ProductoListado.
+                        // Se llena por separado más abajo con codigosAlternosPorProducto;
+                        // placeholder vacío mientras tanto para no romper el tipo.
+                        codigoAlterno: "",
+                        familia: r.familia_nombre ?? "Sin familia",
+                        precio: r.costo_final ?? 0,
+                        stock: r.cantidad_total,
+                        alertLevelStock: r.alertLevelStock,
+                    }))
+            );
+        } catch (err: any) {
+            setErrorProductos(err?.message || "No se pudieron cargar los productos.");
+        } finally {
+            setLoadingProductos(false);
+        }
+    };
+
+    useEffect(() => {
+        cargarProductos();
+        listarProductosParaModal().then(setProductosDevolucion).catch(() => { });
+    }, []);
+
+    /* Familias reales presentes en el catálogo (ya no inventadas del mock) */
+    const FAMILIAS = useMemo(
+        () => Array.from(new Set(productos.map((p) => p.familia))).sort((a, b) => a.localeCompare(b)),
+        [productos]
+    );
+
+    /* Búsqueda: por nombre, código interno o familia */
     const filteredProductos = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
-        return MOCK_PRODUCTOS.filter((p) => {
+        return productos.filter((p) => {
             const matchesSearch =
                 !term ||
                 p.nombre.toLowerCase().includes(term) ||
                 p.codigoInterno.toLowerCase().includes(term) ||
-                (p.codigoAlterno?.toLowerCase().includes(term) ?? false) ||
+                p.codigoAlterno.toLowerCase().includes(term) ||
                 p.familia.toLowerCase().includes(term);
 
             const matchesFamilia = !filterFamilia || p.familia === filterFamilia;
 
             return matchesSearch && matchesFamilia;
         });
+    }, [productos, searchTerm, filterFamilia]);
+
+    // Cambió la búsqueda o el filtro de familia -> regresa a la página 1
+    useEffect(() => {
+        setPage(1);
     }, [searchTerm, filterFamilia]);
 
-    const addToCart = (producto: MockProductoVenta) => {
+    const productosPagina = useMemo(
+        () => filteredProductos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        [filteredProductos, page]
+    );
+
+    const addToCart = (producto: ProductoVenta) => {
         if (producto.stock <= 0) return;
+        setCodigoAlternoDuplicado(null);
         setCart((prev) => {
             const existing = prev.find((i) => i.producto.id === producto.id);
             if (existing) {
@@ -97,6 +166,39 @@ export default function Ventas() {
             }
             return [...prev, { producto, cantidad: 1 }];
         });
+    };
+
+    /* ── Escaneo por código alterno (pistola de código de barras) ──
+       El lector "escribe" el código y termina con Enter, por eso se
+       dispara desde el onKeyDown del buscador. Si el código coincide
+       con un solo producto, se agrega directo al carrito. Si coincide
+       con varios (código alterno duplicado entre productos), no se
+       puede saber cuál es el correcto: se deja el catálogo de la
+       izquierda filtrado a esos productos y se avisa por modal para
+       que el usuario elija manualmente cuál agregar. */
+    const handleEscanearCodigo = (codigo: string) => {
+        const term = codigo.trim();
+        if (!term) return;
+
+        const coincidencias = productos.filter(
+            (p) => p.codigoAlterno && p.codigoAlterno.toLowerCase() === term.toLowerCase()
+        );
+
+        if (coincidencias.length === 1) {
+            addToCart(coincidencias[0]);
+            setSearchTerm("");
+            setFilterFamilia(null);
+            return;
+        }
+
+        if (coincidencias.length > 1) {
+            setSearchTerm(term);
+            setFilterFamilia(null);
+            setCodigoAlternoDuplicado(term);
+        }
+        // Si no hay coincidencia exacta por código alterno, el texto ya
+        // quedó en el buscador (onChange) y sigue la búsqueda normal
+        // por nombre / código interno / familia.
     };
 
     const changeQty = (id: string, delta: number) => {
@@ -122,10 +224,110 @@ export default function Ventas() {
     const totalItems = cart.reduce((sum, i) => sum + i.cantidad, 0);
     const totalVenta = cart.reduce((sum, i) => sum + i.cantidad * i.producto.precio, 0);
 
-    const handleVender = () => {
-        // Solo visual por ahora: aquí se conectará sp_registrar_venta vía IPC
-        alert(`Venta simulada por ${formatMoney(totalVenta)} (${totalItems} artículos)`);
+    /* ── Pago ── */
+    type PagoStep = "cart" | "checkout" | "done";
+    type MetodoPago = "efectivo" | "tarjeta";
+    type TipoCargo = "porcentaje" | "fijo";
+
+    const [pagoStep, setPagoStep] = useState<PagoStep>("cart");
+    const [metodoPago, setMetodoPago] = useState<MetodoPago | null>(null);
+    const [montoPagado, setMontoPagado] = useState("");
+    const [isVendiendo, setIsVendiendo] = useState(false);
+
+    // Doble confirmación al cobrar: WarningModal antes de registrar la
+    // venta, Toast después de que quedó guardada (mismo patrón que
+    // Inventory.tsx: productoAccion/confirmAccionProducto + showToast).
+    const [confirmVentaAbierto, setConfirmVentaAbierto] = useState(false);
+    const { toast, showToast } = useToast();
+    const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: "",
+        message: "",
+    });
+    const showError = (title: string, message: string) => setErrorModal({ isOpen: true, title, message });
+
+    // Cargo por terminal — persistido en localStorage
+    const [cargoValor, setCargoValor] = useState<string>(() =>
+        localStorage.getItem("pos_cargo_valor") ?? ""
+    );
+    const [cargoTipo, setCargoTipo] = useState<TipoCargo>(() =>
+        (localStorage.getItem("pos_cargo_tipo") as TipoCargo) ?? "porcentaje"
+    );
+
+    useEffect(() => {
+        localStorage.setItem("pos_cargo_valor", cargoValor);
+        localStorage.setItem("pos_cargo_tipo", cargoTipo);
+    }, [cargoValor, cargoTipo]);
+
+    // Cálculos de cargo
+    const cargoNum = parseFloat(cargoValor) || 0;
+    const cargoMonto = metodoPago === "tarjeta" && cargoNum > 0
+        ? cargoTipo === "porcentaje"
+            ? totalVenta * (cargoNum / 100)
+            : cargoNum
+        : 0;
+    const totalConCargo = totalVenta + cargoMonto;
+
+    // Efectivo: cambio a devolver
+    const montoPagadoNum = parseFloat(montoPagado) || 0;
+    const cambio = montoPagadoNum - totalConCargo;
+    const pagoCubierto = metodoPago === "tarjeta" || montoPagadoNum >= totalConCargo;
+
+    const handleIrACobrar = () => {
+        if (cart.length === 0) return;
+        setPagoStep("checkout");
+        setMetodoPago(null);
+        setMontoPagado("");
+    };
+
+    const handleVolver = () => {
+        setPagoStep("cart");
+        setMetodoPago(null);
+        setMontoPagado("");
+    };
+
+    const handleVender = async () => {
+        if (!metodoPago || !pagoCubierto || isVendiendo) return;
+        setIsVendiendo(true);
+        try {
+            await registrarVenta({
+                metodo_pago: metodoPago,
+                total: totalConCargo,
+                monto_recibido: metodoPago === "efectivo" ? montoPagadoNum : undefined,
+                cargo_terminal: cargoMonto,
+                detalles: cart.map((i) => ({
+                    id_producto: i.producto.id,
+                    cantidad: i.cantidad,
+                    precio_unitario: i.producto.precio,
+                })),
+            });
+            setPagoStep("done");
+            cargarProductos(); // refresca stock tras la venta
+            showToast("success", "Venta registrada exitosamente.");
+        } catch (err) {
+            showError("Error al vender", err instanceof Error ? err.message : "No se pudo registrar la venta.");
+        } finally {
+            setIsVendiendo(false);
+        }
+    };
+
+    // Primer paso de la doble confirmación: solo abre el aviso.
+    // handleVender (el que de verdad cobra) corre hasta que se confirma.
+    const handlePedirConfirmacionVenta = () => {
+        if (!metodoPago || !pagoCubierto || isVendiendo) return;
+        setConfirmVentaAbierto(true);
+    };
+
+    const handleNuevaVenta = () => {
         clearCart();
+        setPagoStep("cart");
+        setMetodoPago(null);
+        setMontoPagado("");
+    };
+
+    const handleGuardarDevolucion = async (payload: DevolucionPayload) => {
+        await registrarDevolucion(payload);
+        cargarProductos(); // si hubo restock, el stock cambió
     };
 
     return (
@@ -140,11 +342,24 @@ export default function Ventas() {
                             Busca productos y arma la venta actual
                         </p>
                     </div>
-                    <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                        className="btn btn-ghost"
+                        style={{ display: "flex", alignItems: "center", gap: 8 }}
+                        onClick={() => setDevolucionesAbierto(true)}
+                    >
                         <Undo2 size={16} />
                         <span>Registrar devolución</span>
                     </button>
                 </div>
+
+                {errorProductos && (
+                    <div className="pos-catalog-error">
+                        ⚠️ {errorProductos}{" "}
+                        <button type="button" className="pos-catalog-error-retry" onClick={cargarProductos}>
+                            Reintentar
+                        </button>
+                    </div>
+                )}
 
                 <div className="pos-layout">
 
@@ -159,7 +374,10 @@ export default function Ventas() {
                                     wrapperClassName="pos-search-wrap"
                                     placeholder="Nombre, código interno, código alterno o familia"
                                     value={searchTerm}
-                                    onChange={(val) => setSearchTerm(val)}
+                                    onChange={setSearchTerm}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleEscanearCodigo(searchTerm);
+                                    }}
                                     autoFocus
                                     iconLeft={<Search size={14} className="pos-search-icon" />}
                                 />
@@ -171,22 +389,33 @@ export default function Ventas() {
                                     placeholder="Todas las familias"
                                     options={[
                                         { value: '', label: 'Todas las familias' },
-                                        ...FAMILIAS.map(fam => ({ value: fam.nombre, label: `${fam.codigo}-${fam.nombre}` }))
+                                        ...FAMILIAS.map(nombre => ({ value: nombre, label: nombre }))
                                     ]}
                                 />
                             </div>
                         </div>
 
                         <div className="pos-product-grid">
-                            {filteredProductos.length === 0 ? (
+                            {loadingProductos ? (
+                                <div className="pos-empty-catalog">
+                                    <Loader2 size={30} className="pos-spin" />
+                                    <span>Cargando productos…</span>
+                                </div>
+                            ) : filteredProductos.length === 0 ? (
                                 <div className="pos-empty-catalog">
                                     <PackageX size={36} />
                                     <span>No se encontraron productos con esa búsqueda</span>
                                 </div>
                             ) : (
-                                filteredProductos.map((p) => {
-                                    const isOut = p.stock <= 0;
-                                    const isLow = p.stock > 0 && p.stock <= 10;
+                                productosPagina.map((p) => {
+                                    const isOut = p.stock <= 0 || p.alertLevelStock === 'black';
+                                    const isDanger = p.alertLevelStock === 'red';
+                                    const isWarning = p.alertLevelStock === 'yellow';
+                                    
+                                    let toneClass = "";
+                                    if (isDanger) toneClass = " tone-low";
+                                    else if (isWarning) toneClass = " tone-warning";
+
                                     return (
                                         <button
                                             key={p.id}
@@ -203,7 +432,7 @@ export default function Ventas() {
                                             <span className="pos-product-name">{p.nombre}</span>
                                             <div className="pos-product-footer">
                                                 <span className="pos-product-price">{formatMoney(p.precio)}</span>
-                                                <span className={`pos-product-stock${isLow ? " tone-low" : ""}`}>
+                                                <span className={`pos-product-stock${toneClass}`}>
                                                     <span className="pos-product-stock-dot" />
                                                     {isOut ? "Agotado" : `${p.stock} disp.`}
                                                 </span>
@@ -213,6 +442,10 @@ export default function Ventas() {
                                 })
                             )}
                         </div>
+
+                        {!loadingProductos && filteredProductos.length > 0 && (
+                            <Pagination page={page} totalItems={filteredProductos.length} onPageChange={setPage} />
+                        )}
                     </div>
 
                     {/* ── Columna derecha: carrito / venta actual ── */}
@@ -283,26 +516,207 @@ export default function Ventas() {
                         </div>
 
                         <div className="pos-cart-footer">
-                            <div className="pos-cart-totals-row">
-                                <span>Artículos</span>
-                                <span>{totalItems}</span>
-                            </div>
-                            <div className="pos-cart-totals-row is-total">
-                                <span>Total</span>
-                                <span>{formatMoney(totalVenta)}</span>
-                            </div>
-                            <button
-                                className="pos-btn-sell"
-                                disabled={cart.length === 0}
-                                onClick={handleVender}
-                            >
-                                Vender
-                            </button>
+                            {/* ── Estado: venta confirmada ── */}
+                            {pagoStep === "done" ? (
+                                <div className="pos-checkout-done">
+                                    <CheckCircle2 size={40} className="pos-done-icon" />
+                                    <p className="pos-done-title">¡Venta registrada!</p>
+                                    {metodoPago === "efectivo" && cambio > 0 && (
+                                        <div className="pos-done-cambio">
+                                            <span>Cambio a entregar</span>
+                                            <span className="pos-done-cambio-amount">{formatMoney(cambio)}</span>
+                                        </div>
+                                    )}
+                                    <button className="pos-btn-sell" onClick={handleNuevaVenta}>
+                                        Nueva venta
+                                    </button>
+                                </div>
+                            ) : pagoStep === "checkout" ? (
+                                /* ── Estado: selección de método de pago ── */
+                                <div className="pos-checkout-panel">
+                                    <button className="pos-checkout-back" onClick={handleVolver}>
+                                        <ArrowLeft size={14} /> Regresar
+                                    </button>
+
+                                    {/* Subtotal */}
+                                    <div className="pos-cart-totals-row">
+                                        <span>Subtotal</span>
+                                        <span>{formatMoney(totalVenta)}</span>
+                                    </div>
+
+                                    {/* Método de pago */}
+                                    <p className="pos-checkout-label">Método de pago</p>
+                                    <div className="pos-metodo-btns">
+                                        <button
+                                            className={`pos-metodo-btn${metodoPago === "efectivo" ? " active" : ""}`}
+                                            onClick={() => { setMetodoPago("efectivo"); setMontoPagado(""); }}
+                                        >
+                                            <Banknote size={18} />
+                                            Efectivo
+                                        </button>
+                                        <button
+                                            className={`pos-metodo-btn${metodoPago === "tarjeta" ? " active" : ""}`}
+                                            onClick={() => setMetodoPago("tarjeta")}
+                                        >
+                                            <CreditCard size={18} />
+                                            Tarjeta / Trans.
+                                        </button>
+                                    </div>
+
+                                    {/* Cargo por terminal — solo tarjeta */}
+                                    {metodoPago === "tarjeta" && (
+                                        <div className="pos-cargo-row">
+                                            <span className="pos-checkout-label" style={{ marginBottom: 0 }}>
+                                                Cargo terminal (opcional)
+                                            </span>
+                                            <div className="pos-cargo-inputs">
+                                                <button
+                                                    className={`pos-cargo-tipo-btn${cargoTipo === "porcentaje" ? " active" : ""}`}
+                                                    onClick={() => setCargoTipo("porcentaje")}
+                                                    title="Porcentaje"
+                                                >
+                                                    <Percent size={13} />
+                                                </button>
+                                                <button
+                                                    className={`pos-cargo-tipo-btn${cargoTipo === "fijo" ? " active" : ""}`}
+                                                    onClick={() => setCargoTipo("fijo")}
+                                                    title="Monto fijo"
+                                                >
+                                                    <DollarSign size={13} />
+                                                </button>
+                                                <FormInput
+                                                    min={0}
+                                                    step={cargoTipo === "porcentaje" ? 0.5 : 1}
+                                                    placeholder={cargoTipo === "porcentaje" ? "% cargo" : "$ cargo"}
+                                                    value={cargoValor}
+                                                    onChange={setCargoValor}
+                                                    className="pos-cargo-input"
+                                                />
+                                            </div>
+                                            {cargoMonto > 0 && (
+                                                <div className="pos-cart-totals-row pos-cargo-desglose">
+                                                    <span>
+                                                        Cargo terminal
+                                                        {cargoTipo === "porcentaje" ? ` (${cargoNum}%)` : ""}
+                                                    </span>
+                                                    <span>+{formatMoney(cargoMonto)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Campo de monto — solo efectivo */}
+                                    {metodoPago === "efectivo" && (
+                                        <div className="pos-efectivo-row">
+                                            <label className="pos-checkout-label">
+                                                Dinero recibido
+                                            </label>
+                                            <FormInput
+                                                autoFocus
+                                                min={0}
+                                                step={0.5}
+                                                placeholder="$0.00"
+                                                value={montoPagado}
+                                                onChange={setMontoPagado}
+                                                className="pos-monto-input"
+                                                onKeyDown={(e) => { if (e.key === "Enter" && pagoCubierto) handlePedirConfirmacionVenta(); }}
+                                            />
+                                            {montoPagadoNum > 0 && (
+                                                <div className={`pos-cambio-row${cambio < 0 ? " insuficiente" : ""}`}>
+                                                    <span>{cambio < 0 ? "Falta" : "Cambio"}</span>
+                                                    <span className="pos-cambio-amount">
+                                                        {formatMoney(Math.abs(cambio))}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Total con cargo */}
+                                    <div className="pos-cart-totals-row is-total">
+                                        <span>Total a cobrar</span>
+                                        <span>{formatMoney(totalConCargo)}</span>
+                                    </div>
+
+                                    <button
+                                        className="pos-btn-sell"
+                                        disabled={!metodoPago || !pagoCubierto || isVendiendo}
+                                        onClick={handlePedirConfirmacionVenta}
+                                    >
+                                        {isVendiendo
+                                            ? <><Loader2 size={16} className="pos-spin" /> Procesando…</>
+                                            : metodoPago === "efectivo"
+                                                ? <><Banknote size={16} /> Confirmar cobro</>
+                                                : <><CreditCard size={16} /> Confirmar pago</>
+                                        }
+                                    </button>
+                                </div>
+                            ) : (
+                                /* ── Estado: carrito normal ── */
+                                <>
+                                    <div className="pos-cart-totals-row">
+                                        <span>Artículos</span>
+                                        <span>{totalItems}</span>
+                                    </div>
+                                    <div className="pos-cart-totals-row is-total">
+                                        <span>Total</span>
+                                        <span>{formatMoney(totalVenta)}</span>
+                                    </div>
+                                    <button
+                                        className="pos-btn-sell"
+                                        disabled={cart.length === 0}
+                                        onClick={handleIrACobrar}
+                                    >
+                                        Cobrar
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
 
                 </div>
             </div>
+
+            <Devoluciones
+                isOpen={devolucionesAbierto}
+                onClose={() => setDevolucionesAbierto(false)}
+                productos={productosDevolucion}
+                onSave={handleGuardarDevolucion}
+            />
+
+            <ErrorModal
+                isOpen={codigoAlternoDuplicado !== null}
+                onClose={() => setCodigoAlternoDuplicado(null)}
+                title="Código duplicado"
+                message={
+                    <>
+                        Hay más de un producto registrado con el código alterno{" "}
+                        <strong>{codigoAlternoDuplicado}</strong>. Filtré el catálogo
+                        de la izquierda a esos productos: elige manualmente cuál
+                        agregar a la venta.
+                    </>
+                }
+            />
+
+            <WarningModal
+                isOpen={confirmVentaAbierto}
+                onClose={() => setConfirmVentaAbierto(false)}
+                onConfirm={() => {
+                    setConfirmVentaAbierto(false);
+                    handleVender();
+                }}
+                title="Confirmar venta"
+                message={`¿Confirmas la venta por ${formatMoney(totalConCargo)}${metodoPago === "efectivo" ? "?" : ` con tarjeta/transferencia?`}`}
+            />
+
+            <ErrorModal
+                isOpen={errorModal.isOpen}
+                onClose={() => setErrorModal((prev) => ({ ...prev, isOpen: false }))}
+                title={errorModal.title}
+                message={errorModal.message}
+            />
+
+            <Toast toast={toast} />
         </div>
     );
 }

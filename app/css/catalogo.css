@@ -419,45 +419,63 @@
 }
 
 /* =============================================
-   Toast simple (sin dependencias externas)
+   Pagination — componente reutilizable de páginas
+   numeradas (1 2 3…), compartido con Inventario
+   (components/Pagination.tsx). Mismo bloque de estilos
+   que inventario.css para que luzca igual en toda la app.
    ============================================= */
-.cat-toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 100;
+.cuh-pagination {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    border-radius: var(--cuh-radius-lg);
-    box-shadow: var(--cuh-shadow-lg);
-    font-size: 13.5px;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+}
+
+.cuh-pagination-btn {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 6px;
+    border: 1px solid var(--cuh-border-light);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-muted);
+    border-radius: 7px;
+    font-size: 12.5px;
     font-weight: 600;
-    animation: cat-toast-in 0.2s ease;
-    max-width: 360px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.cat-toast.tone-success {
-    background: var(--cuh-success);
-    color: white;
+.cuh-pagination-btn:hover:not(:disabled):not(.active) {
+    background: var(--cuh-bg);
+    color: var(--cuh-text-dark);
 }
 
-.cat-toast.tone-error {
-    background: var(--cuh-danger);
-    color: white;
+.cuh-pagination-btn.active {
+    background: var(--cuh-primary, #2f6feb);
+    border-color: var(--cuh-primary, #2f6feb);
+    color: #fff;
+    cursor: default;
 }
 
-@keyframes cat-toast-in {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
+.cuh-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.cuh-pagination-arrow {
+    color: var(--cuh-text-muted);
+}
+
+.cuh-pagination-ellipsis {
+    width: 24px;
+    text-align: center;
+    color: var(--cuh-text-light);
+    font-size: 12.5px;
 }
 
 /* =============================================

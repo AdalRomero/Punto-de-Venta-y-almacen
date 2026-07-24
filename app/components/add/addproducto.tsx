@@ -11,7 +11,12 @@ import FormSelect from "../FormSelect";
 export interface FamiliaRow {
     id_familia: string;
     nombre: string;
-    digitos: number; // ancho del folio secuencial dentro de la familia
+    /** Código propio de la familia (Familia.digitos en el esquema:
+     *  Harinas=01, Pan=02, Sabritas=03...). Es el prefijo que se usa
+     *  al armar el código interno de sus productos — NO el ancho del
+     *  folio secuencial, ese siempre es mínimo 2 cifras y crece solo
+     *  si hace falta (99 -> 100). */
+    digitos: number;
 }
 
 export interface MargenRow {
@@ -175,9 +180,14 @@ export default function AddProducto({
         setError(null);
     }
 
-    /* Autogenera codigo_interno: 2 dígitos de posición de familia +
-       folio secuencial con el ancho definido en Familia.digitos.
-       Ej. familia #1 con digitos=2 -> "01" + "01" = "0101" */
+    /* Autogenera codigo_interno con formato "{código de familia}-{folio}"
+       (ej. Pan = familia 02, su tercer producto -> "02-03"). El prefijo
+       SIEMPRE es el código propio de la familia (Familia.digitos), nunca
+       la posición en el arreglo `familias` — esa posición cambia según
+       cómo venga ordenada la lista (por fecha, por nombre...) y desincroniza
+       el código ya guardado en la base con lo que se ve en pantalla.
+       El folio es el consecutivo dentro de esa familia, mínimo 2 cifras,
+       y crece sin límite si hace falta (...-99 -> ...-100). */
     const handleFamiliaChange = (selectedFamiliaId: string) => {
         setFamiliaId(selectedFamiliaId);
         if (!selectedFamiliaId) {
@@ -185,24 +195,22 @@ export default function AddProducto({
             return;
         }
 
-        const idx = familias.findIndex((f) => f.id_familia === selectedFamiliaId);
-        if (idx === -1) return;
-        const familia = familias[idx];
-        const prefijo = String(idx + 1).padStart(2, "0");
+        const familia = familias.find((f) => f.id_familia === selectedFamiliaId);
+        if (!familia) return;
+        const prefijo = String(familia.digitos).padStart(2, "0");
 
         let maxFolio = 0;
         productosExistentes
             .filter((p) => p.id_familia === selectedFamiliaId)
             .forEach((p) => {
                 const cod = p.codigo_interno || "";
-                if (cod.startsWith(prefijo)) {
-                    const folioNum = parseInt(cod.substring(prefijo.length), 10);
-                    if (!isNaN(folioNum) && folioNum > maxFolio) maxFolio = folioNum;
-                }
+                const folioStr = cod.split("-")[1];
+                const folioNum = parseInt(folioStr, 10);
+                if (!isNaN(folioNum) && folioNum > maxFolio) maxFolio = folioNum;
             });
 
-        const siguiente = String(maxFolio + 1).padStart(familia.digitos || 2, "0");
-        setCodigoInterno(`${prefijo}${siguiente}`);
+        const siguienteFolio = String(maxFolio + 1).padStart(2, "0");
+        setCodigoInterno(`${prefijo}-${siguienteFolio}`);
     };
 
     /* ── Calculadora fiscal (solo referencia) ── */
@@ -318,9 +326,9 @@ export default function AddProducto({
                                         onChange={handleFamiliaChange}
                                         options={[
                                             { value: "", label: "Selecciona..." },
-                                            ...familias.map((f, idx) => ({
+                                            ...familias.map((f) => ({
                                                 value: f.id_familia,
-                                                label: `${String(idx + 1).padStart(2, "0")}-${f.nombre}`,
+                                                label: `${String(f.digitos).padStart(2, "0")}-${f.nombre}`,
                                             })),
                                         ]}
                                     />
@@ -330,7 +338,7 @@ export default function AddProducto({
                                     <FormInput
                                         type="text"
                                         className="aip-input"
-                                        placeholder="Ej. 0101"
+                                        placeholder="Ej. 01-01"
                                         value={codigoInterno}
                                         onChange={setCodigoInterno}
                                     />

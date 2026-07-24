@@ -49,6 +49,7 @@ import type {
     EntradaPayload,
 } from '../../app/components/add/addentrada';
 import { SESSION_KEY } from '../context/AuthContext';
+import { crearNotificacion } from './notificaciones.service';
 
 /* ─── Tipos propios de este archivo ──────────────────────────── */
 
@@ -64,10 +65,31 @@ export interface ProductoListado {
     impuesto_porcentaje: number; // 0 si no tiene ningún impuesto activo
     costo_final: number | null;
     cantidad_total: number;
-    proxima_caducidad: string | null;
+    proxima_caducidad: string | Date | null;
     activo: boolean;
+    /** Peor de los tres semáforos (stock total, estantería y caducidad)
+     *  — la usan los pills de filtro y los KPIs, que hoy no distinguen
+     *  origen. */
     alertLevel: AlertLevel;
+    /** Semáforo SOLO de existencia total, para la columna "Stock". */
+    alertLevelStock: AlertLevel;
+    /** Semáforo SOLO de estantería (cantidad_estanteria vs meta_estanteria),
+     *  para la columna "Estantería". 'none' si el producto no tiene meta
+     *  configurada (nunca se le da seguimiento a su estantería). */
+    alertLevelEstanteria: AlertLevel;
+    /** Semáforo SOLO de caducidad, para la columna "Caducidad". */
+    alertLevelCaducidad: AlertLevel;
+    /** Umbrales de días del producto — se exponen para poder colorear
+     *  cada lote individual en el modal "Ver lotes" con la misma regla. */
+    umbral_rojo_dias: number | null;
+    umbral_amarillo_dias: number | null;
     unidad: 'piezas' | 'kilos';
+    /** Unidades puestas en estantería ahora mismo (subconjunto de
+     *  cantidad_total — el resto vive en almacén). */
+    cantidad_estanteria: number;
+    /** Unidades que el producto siempre debería tener en estantería.
+     *  null = sin meta configurada, no se le da seguimiento. */
+    meta_estanteria: number | null;
 }
 
 /* Fila cruda de la consulta principal, antes de calcular alertLevel. */
@@ -81,10 +103,12 @@ interface ProductoListadoRow {
     umbral_amarillo_dias: number | null;
     umbral_rojo_stock: number | null;
     umbral_amarillo_stock: number | null;
+    meta_estanteria: number | null;
+    cantidad_estanteria: number | null;
     id_familia: string | null;
     familia_nombre: string | null;
     cantidad_total: number | null;
-    proxima_caducidad: string | null;
+    proxima_caducidad: string | Date | null;
     unidad: 'piezas' | 'kilos' | null;
     impuesto_porcentaje: number | null;
 }
@@ -131,42 +155,146 @@ function obtenerActorId(): string | null {
     }
 }
 
-/** Traduce dias_restantes + stock actual contra los umbrales del
- *  producto a un solo semáforo. Un producto inactivo siempre es
- *  "none"; si tiene un lote ya vencido (dias_restantes <= 0) es
- *  "black"; de ahí en adelante gana el peor de los dos criterios
- *  (stock o caducidad). Ajustable si el negocio quiere otra regla. */
-function calcularAlertLevel(row: ProductoListadoRow): AlertLevel {
+async function logActividad(accion: string, entidad: string, descripcion: string, entityChannel: string) {
+    const actorId = obtenerActorId();
+    if (!actorId) return;
+    try {
+        await window.api.execute(
+            `INSERT INTO Bitacora (id_perfil_info, id_actor, accion, entidad, descripcion) VALUES (?, ?, ?, ?, ?)`,
+            [actorId, actorId, accion, entidad, descripcion],
+            entityChannel
+        );
+    } catch {}
+}
+
+async function getProductName(id: string): Promise<string> {
+    try {
+        const rows = await window.api.query(`SELECT nombre FROM Producto WHERE id_producto = ?`, [id]);
+        return rows[0]?.nombre || `ID: ${id.substring(0, 8)}`;
+    } catch {
+        return `ID: ${id.substring(0, 8)}`;
+    }
+}
+
+/** Núcleo reusable: días restantes (redondeados) desde HOY hasta una
+ *  fecha 'YYYY-MM-DD' u objeto Date, comparando medianoche LOCAL contra
+ *  medianoche LOCAL — día contra día, no hora contra hora. Ver el
+ *  comentario largo en diasRestantesDe() para el porqué de cada paso;
+ *  se separó de esa función para poder reusarlo también por lote
+ *  individual (listarLotesPorProducto), no solo por producto. */
+function diasRestantesHasta(fecha: string | Date | null): number | null {
+    if (!fecha) return null;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let fechaStr: string;
+    if (typeof fecha === 'string') {
+        fechaStr = fecha.slice(0, 10);
+    } else {
+        const y = fecha.getFullYear();
+        const m = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        fechaStr = `${y}-${m}-${day}`;
+    }
+    const fechaExp = new Date(`${fechaStr}T00:00:00`);
+
+    return Math.round((fechaExp.getTime() - hoy.getTime()) / 86_400_000);
+}
+
+/** row.proxima_caducidad llega como 'YYYY-MM-DD' O como objeto Date, según
+ *  lo serialice window.api (mysql2 puede entregar columnas DATE ya
+ *  parseadas a Date). Dos trampas de zona horaria distintas a evitar:
+ *    - Si es string: `new Date('YYYY-MM-DD')` a secas se interpreta como
+ *      medianoche UTC, no local.
+ *    - Si ya es Date: mysql2 lo construye en medianoche LOCAL, así que
+ *      volver a pasarlo por `.toISOString()` (que siempre da UTC) también
+ *      corre la fecha un día — hay que leer sus componentes locales
+ *      (getFullYear/getMonth/getDate) tal cual, sin reconvertir a UTC.
+ *  En cualquier zona detrás de UTC (México) el resultado de no hacer esto
+ *  es un lote marcado "vencido" (o en rojo/amarillo) un día antes de
+ *  tiempo. */
+function diasRestantesDe(row: ProductoListadoRow): number | null {
+    return diasRestantesHasta(row.proxima_caducidad);
+}
+
+/** Semáforo SOLO de existencia (columna "Stock"): 0 o menos es
+ *  "black" (agotado), y de ahí para arriba se compara contra los
+ *  umbrales rojo/amarillo de stock del producto. Sin umbrales
+ *  configurados y con stock > 0, es "green". */
+function calcularAlertLevelStock(row: ProductoListadoRow): AlertLevel {
     if (!row.activo) return 'none';
 
     const stock = row.cantidad_total ?? 0;
-    const diasRestantes = row.proxima_caducidad
-        ? Math.ceil(
-            (new Date(row.proxima_caducidad).getTime() - Date.now()) / 86_400_000
-        )
-        : null;
-
-    if (diasRestantes !== null && diasRestantes <= 0) return 'black';
+    if (stock <= 0) return 'black';
 
     const stockRojo = row.umbral_rojo_stock;
     const stockAmarillo = row.umbral_amarillo_stock;
-    const diasRojo = row.umbral_rojo_dias;
-    const diasAmarillo = row.umbral_amarillo_dias;
 
-    const esRojoPorStock = stockRojo !== null && stock <= stockRojo;
-    const esRojoPorCaducidad =
-        diasRestantes !== null && diasRojo !== null && diasRestantes <= diasRojo;
-    if (esRojoPorStock || esRojoPorCaducidad) return 'red';
-
-    const esAmarilloPorStock = stockAmarillo !== null && stock <= stockAmarillo;
-    const esAmarilloPorCaducidad =
-        diasRestantes !== null && diasAmarillo !== null && diasRestantes <= diasAmarillo;
-    if (esAmarilloPorStock || esAmarilloPorCaducidad) return 'yellow';
-
+    if (stockRojo !== null && stock <= stockRojo) return 'red';
+    if (stockAmarillo !== null && stock <= stockAmarillo) return 'yellow';
     return 'green';
 }
 
+/** Semáforo SOLO de caducidad (columna "Caducidad"): ya vencido
+ *  (dias_restantes <= 0) es "black"; de ahí para arriba se compara
+ *  contra los umbrales rojo/amarillo de días del producto. Sin
+ *  ningún lote con fecha de caducidad, es "none". */
+function calcularAlertLevelCaducidad(row: ProductoListadoRow): AlertLevel {
+    if (!row.activo) return 'none';
+
+    const diasRestantes = diasRestantesDe(row);
+    if (diasRestantes === null) return 'none';
+    if (diasRestantes <= 0) return 'black';
+
+    const diasRojo = row.umbral_rojo_dias;
+    const diasAmarillo = row.umbral_amarillo_dias;
+
+    if (diasRojo !== null && diasRestantes <= diasRojo) return 'red';
+    if (diasAmarillo !== null && diasRestantes <= diasAmarillo) return 'yellow';
+    return 'green';
+}
+
+/** Semáforo SOLO de estantería (columna "Estantería"), por PORCENTAJE
+ *  de cantidad_estanteria contra meta_estanteria:
+ *    - Sin meta_estanteria configurada (o meta 0): "none", no se le
+ *      da seguimiento a ese producto.
+ *    - 0 unidades en estantería: "black" (sin existencias en estantería).
+ *    - Hasta 20% de la meta: "red".
+ *    - Más de 20% y hasta 40% de la meta: "yellow".
+ *    - Más de 40% de la meta: "green". */
+function calcularAlertLevelEstanteria(row: ProductoListadoRow): AlertLevel {
+    if (!row.activo) return 'none';
+
+    const meta = row.meta_estanteria;
+    if (meta === null || meta <= 0) return 'none';
+
+    const enEstanteria = row.cantidad_estanteria ?? 0;
+    if (enEstanteria <= 0) return 'black';
+
+    const porcentaje = enEstanteria / meta;
+    if (porcentaje <= 0.2) return 'red';
+    if (porcentaje <= 0.4) return 'yellow';
+    return 'green';
+}
+
+/** Peor de dos semáforos, en el mismo orden de prioridad de siempre:
+ *  black > red > yellow > green > none. */
+function peorAlertLevel(a: AlertLevel, b: AlertLevel): AlertLevel {
+    const prioridad: Record<AlertLevel, number> = { black: 4, red: 3, yellow: 2, green: 1, none: 0 };
+    return prioridad[a] >= prioridad[b] ? a : b;
+}
+
+/** Peor de los tres semáforos (stock total, estantería, caducidad).
+ *  La usan los pills de filtro por color y los KPIs de arriba. */
+function peorDeTres(a: AlertLevel, b: AlertLevel, c: AlertLevel): AlertLevel {
+    return peorAlertLevel(peorAlertLevel(a, b), c);
+}
+
 function mapProductoListado(row: ProductoListadoRow): ProductoListado {
+    const alertLevelStock = calcularAlertLevelStock(row);
+    const alertLevelEstanteria = calcularAlertLevelEstanteria(row);
+    const alertLevelCaducidad = calcularAlertLevelCaducidad(row);
     return {
         id_producto: row.id_producto,
         nombre: row.nombre,
@@ -179,7 +307,14 @@ function mapProductoListado(row: ProductoListadoRow): ProductoListado {
         proxima_caducidad: row.proxima_caducidad,
         activo: !!row.activo,
         unidad: row.unidad ?? 'piezas',
-        alertLevel: calcularAlertLevel(row),
+        umbral_rojo_dias: row.umbral_rojo_dias,
+        umbral_amarillo_dias: row.umbral_amarillo_dias,
+        cantidad_estanteria: Number(row.cantidad_estanteria ?? 0),
+        meta_estanteria: row.meta_estanteria,
+        alertLevelStock,
+        alertLevelEstanteria,
+        alertLevelCaducidad,
+        alertLevel: peorDeTres(alertLevelStock, alertLevelEstanteria, alertLevelCaducidad),
     };
 }
 
@@ -250,10 +385,44 @@ const SELECT_LISTADO = `
     SELECT
         p.id_producto, p.codigo_interno, p.nombre, p.costo_final, p.activo,
         p.umbral_rojo_dias, p.umbral_amarillo_dias, p.umbral_rojo_stock, p.umbral_amarillo_stock,
+        p.meta_estanteria, COALESCE(inv.cantidad_estanteria, 0) AS cantidad_estanteria,
         f.id_familia, f.nombre AS familia_nombre,
-        COALESCE(i.cantidad_total, 0) AS cantidad_total,
+        -- Stock VIGENTE: no se usa Inventario.cantidad_total tal cual
+        -- porque esa columna no sabe cuándo un lote caducó (no hay
+        -- trigger/evento en el esquema que pase estado_lote a
+        -- 'caducado' solo). Se suma directo de Lote, excluyendo lotes
+        -- ya vencidos, para que un producto podrido no siga contando
+        -- como stock sano — MÁS los ajustes de Ajuste_Inventario que
+        -- no están ligados a ningún lote (id_lote IS NULL): ahí caen
+        -- las devoluciones con restock (nadie sabe de qué lote venía
+        -- lo que el cliente regresa) y cualquier corrección manual
+        -- genérica. Sin este segundo SUM, esos ajustes se guardan en
+        -- Inventario.cantidad_total pero esta columna nunca los lee
+        -- — la devolución "se guarda" pero el número en pantalla no
+        -- se mueve. Los ajustes CON id_lote (ej. actualizarLote) NO
+        -- se vuelven a sumar aquí porque ya están dentro de
+        -- Lote.cantidad_disponible (tr_ajuste ya los aplicó ahí).
+        COALESCE((
+            SELECT SUM(l.cantidad_disponible) FROM Lote l
+            WHERE l.id_producto = p.id_producto
+              AND l.estado_lote IN ('activo','parcial')
+              AND (l.fecha_caducidad IS NULL OR l.fecha_caducidad > CURDATE())
+        ), 0)
+        + COALESCE((
+            SELECT SUM(a.cantidad_ajuste) FROM Ajuste_Inventario a
+            WHERE a.id_producto = p.id_producto
+              AND a.id_lote IS NULL
+        ), 0) AS cantidad_total,
         (SELECT MIN(l.fecha_caducidad) FROM Lote l
-          WHERE l.id_producto = p.id_producto AND l.estado_lote IN ('activo','parcial')) AS proxima_caducidad,
+          WHERE l.id_producto = p.id_producto
+            AND l.estado_lote IN ('activo','parcial')
+            -- Un lote ya vencido y "enterado" (ver marcarLoteEnterado) deja
+            -- de contar para este mínimo: así el semáforo pasa al siguiente
+            -- lote más próximo en vez de quedarse pegado en negro para
+            -- siempre. Uno vencido y SIN enterar sigue ganando siempre,
+            -- porque su fecha pasada es menor que cualquier fecha futura.
+            AND (l.fecha_caducidad > CURDATE() OR l.enterado = FALSE)
+          ) AS proxima_caducidad,
         (SELECT l.unidad FROM Lote l
           WHERE l.id_producto = p.id_producto ORDER BY l.created DESC LIMIT 1) AS unidad,
         (SELECT MAX(ith.porcentaje) FROM Producto_Impuesto pi
@@ -262,7 +431,7 @@ const SELECT_LISTADO = `
           WHERE pi.id_producto = p.id_producto AND pi.activo = TRUE) AS impuesto_porcentaje
     FROM Producto p
     LEFT JOIN Familia f ON f.id_familia = p.id_familia
-    LEFT JOIN Inventario i ON i.id_producto = p.id_producto
+    LEFT JOIN Inventario inv ON inv.id_producto = p.id_producto
 `;
 
 /** Lista completa para la tabla de Inventory.tsx (reemplaza
@@ -270,9 +439,194 @@ const SELECT_LISTADO = `
  *  se encarga de mandar los inactivos al final. */
 export async function listarProductosInventario(): Promise<ProductoListado[]> {
     const rows: ProductoListadoRow[] = await window.api.query(
-        `${SELECT_LISTADO} ORDER BY p.nombre ASC`
+        `${SELECT_LISTADO} ORDER BY p.created DESC`
     );
     return rows.map(mapProductoListado);
+}
+
+/* ─── Lecturas: lotes de un producto (modal "Ver lotes") ─────── */
+
+/** Fila para el modal de lotes — un renglón por Lote real, para que se
+ *  vea CUÁL lote está vencido/por vencer en vez de un solo punto
+ *  resumido a nivel producto. */
+export interface LoteListado {
+    id_lote: string;
+    cantidad: number;
+    cantidad_disponible: number;
+    fecha_caducidad: string | Date | null;
+    estado_lote: 'activo' | 'parcial' | 'agotado' | 'caducado';
+    unidad: 'piezas' | 'kilos';
+    costo_compra: number | null;
+    created: string;
+    /** Semáforo de ESTE lote (no del producto completo). 'none' si no
+     *  tiene fecha_caducidad capturada. */
+    alertLevel: AlertLevel;
+    /** true si alguien ya "reconoció" este lote vencido (botón del ojo
+     *  en la vista de lotes) — deja de forzar el semáforo del producto
+     *  a negro, pero el lote sigue existiendo y se sigue viendo como
+     *  vencido en el detalle. */
+    enterado: boolean;
+    enterado_por: string | null;
+    enterado_en: string | null;
+}
+
+interface LoteListadoRow {
+    id_lote: string;
+    cantidad: number;
+    cantidad_disponible: number;
+    fecha_caducidad: string | Date | null;
+    estado_lote: LoteListado['estado_lote'];
+    unidad: 'piezas' | 'kilos';
+    costo_compra: number | string | null;
+    created: string;
+    enterado: number | boolean;
+    enterado_por: string | null;
+    enterado_en: string | null;
+}
+
+/** Todos los lotes (vigentes, agotados y caducados) de un producto,
+ *  del más próximo a vencer al más lejano — para el botón "Ver lotes"
+ *  de Inventory.tsx. A diferencia de listarProductosInventario(), aquí
+ *  SÍ se incluyen los caducados/agotados: el punto es precisamente
+ *  poder ver cuál lote es el que se echó a perder. */
+export async function listarLotesPorProducto(
+    id_producto: string,
+    umbralRojoDias: number | null,
+    umbralAmarilloDias: number | null
+): Promise<LoteListado[]> {
+    const rows: LoteListadoRow[] = await window.api.query(
+        `SELECT id_lote, cantidad, cantidad_disponible, fecha_caducidad,
+                estado_lote, unidad, costo_compra, created,
+                enterado, enterado_por, enterado_en
+         FROM Lote
+         WHERE id_producto = ?
+         ORDER BY (fecha_caducidad IS NULL), fecha_caducidad ASC, created DESC`,
+        [id_producto]
+    );
+
+    return rows.map((row) => {
+        const diasRestantes = diasRestantesHasta(row.fecha_caducidad);
+        let alertLevel: AlertLevel;
+        if (row.estado_lote === 'agotado') {
+            alertLevel = 'none';
+        } else if (diasRestantes === null) {
+            alertLevel = 'none';
+        } else if (diasRestantes <= 0) {
+            alertLevel = 'black';
+        } else if (umbralRojoDias !== null && diasRestantes <= umbralRojoDias) {
+            alertLevel = 'red';
+        } else if (umbralAmarilloDias !== null && diasRestantes <= umbralAmarilloDias) {
+            alertLevel = 'yellow';
+        } else {
+            alertLevel = 'green';
+        }
+
+        return {
+            id_lote: row.id_lote,
+            cantidad: Number(row.cantidad),
+            cantidad_disponible: Number(row.cantidad_disponible),
+            fecha_caducidad: row.fecha_caducidad,
+            estado_lote: row.estado_lote,
+            unidad: row.unidad,
+            costo_compra: row.costo_compra != null ? Number(row.costo_compra) : null,
+            created: row.created,
+            alertLevel,
+            enterado: !!row.enterado,
+            enterado_por: row.enterado_por,
+            enterado_en: row.enterado_en,
+        };
+    });
+}
+
+/** Payload de la edición inline de un lote (fila editable en la
+ *  vista "Ver lotes"). Todos los campos son opcionales: solo se
+ *  actualiza lo que el usuario realmente tocó en la fila. */
+export interface LoteEditPayload {
+    cantidad_disponible?: number;
+    fecha_caducidad?: string | null;
+    unidad?: LoteListado['unidad'];
+    costo_compra?: number | null;
+}
+
+/** Edición inline de un lote (fila editable en "Ver lotes"): permite
+ *  corregir cantidad disponible, fecha de caducidad, unidad y costo
+ *  de compra directo sobre un lote ya existente.
+ *
+ *  cantidad_disponible NO se manda con un UPDATE directo a Lote: se
+ *  registra como un Ajuste_Inventario (id_lote apuntando a este lote,
+ *  cantidad_ajuste = diferencia contra lo que había). Eso dispara
+ *  tr_ajuste, que es quien de verdad sabe mantener sincronizados
+ *  Lote.cantidad_disponible, Lote.estado_lote e Inventario.cantidad_total
+ *  a la vez (y de ahí sp_recalcular_avisos_producto vía
+ *  tr_avisos_inventario_update). Un UPDATE a mano a Lote dejaría el
+ *  stock total del producto desincronizado.
+ *
+ *  fecha_caducidad / unidad / costo_compra sí son UPDATE directo:
+ *  no tienen ningún trigger que dependa de ellos. */
+export async function actualizarLote(
+    idLote: string,
+    idProducto: string,
+    cantidadDisponibleActual: number,
+    payload: LoteEditPayload
+): Promise<void> {
+    try {
+        if (
+            payload.cantidad_disponible !== undefined &&
+            payload.cantidad_disponible !== cantidadDisponibleActual
+        ) {
+            const delta = payload.cantidad_disponible - cantidadDisponibleActual;
+            await window.api.execute(
+                `INSERT INTO Ajuste_Inventario (id_producto, id_lote, cantidad_ajuste, motivo, autorizado_por)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [idProducto, idLote, delta, 'Corrección manual de stock (edición de lote)', obtenerActorId()],
+                ENTITY
+            );
+        }
+
+        const sets: string[] = [];
+        const params: (string | number | null)[] = [];
+        if (payload.fecha_caducidad !== undefined) {
+            sets.push('fecha_caducidad = ?');
+            params.push(payload.fecha_caducidad);
+        }
+        if (payload.unidad !== undefined) {
+            sets.push('unidad = ?');
+            params.push(payload.unidad);
+        }
+        if (payload.costo_compra !== undefined) {
+            sets.push('costo_compra = ?');
+            params.push(payload.costo_compra);
+        }
+        if (sets.length > 0) {
+            params.push(idLote);
+            await window.api.execute(
+                `UPDATE Lote SET ${sets.join(', ')} WHERE id_lote = ?`,
+                params,
+                ENTITY
+            );
+        }
+        const pName = await getProductName(idProducto);
+        await logActividad('actualizar_lote', 'lote', `Actualizó el lote ${idLote.substring(0, 8)} de ${pName}`, ENTITY);
+    } catch (err) {
+        throw new Error(limpiarMensajeIpc(err, 'este lote'));
+    }
+}
+
+/** Marca (o desmarca) un lote vencido como "enterado": dejas de ver su
+ *  VENCIDO forzando el semáforo del producto en la tabla principal a
+ *  negro, sin borrar ni desactivar el lote — sigue apareciendo tal cual
+ *  en la vista de lotes. Se guarda en la base (no en localStorage) para
+ *  que se vea igual sin importar quién ni desde qué equipo lo abra. */
+export async function marcarLoteEnterado(idLote: string, enterado: boolean): Promise<void> {
+    try {
+        await window.api.execute(
+            `UPDATE Lote SET enterado = ?, enterado_por = ?, enterado_en = ? WHERE id_lote = ?`,
+            [enterado, enterado ? obtenerActorId() : null, enterado ? new Date() : null, idLote],
+            ENTITY
+        );
+    } catch (err) {
+        throw new Error(limpiarMensajeIpc(err, 'este lote'));
+    }
 }
 
 /** Solo los productos activos, en el shape ProductoRow que espera
@@ -390,6 +744,7 @@ export async function crearProducto(payload: ProductoPayload): Promise<string> {
                 ENTITY
             );
         }
+        await logActividad('crear_producto', 'producto', `Creó el producto ${payload.nombre}`, ENTITY);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }
@@ -479,6 +834,7 @@ export async function actualizarProducto(
                 );
             }
         }
+        await logActividad('actualizar_producto', 'producto', `Actualizó el producto ${payload.nombre}`, ENTITY);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }
@@ -498,9 +854,58 @@ export async function cambiarEstadoProducto(
             [activo, idProducto],
             ENTITY
         );
+        const msj = activo ? 'Reactivó' : 'Desactivó';
+        const pName = await getProductName(idProducto);
+        await logActividad('cambiar_estado', 'producto', `${msj} el producto ${pName}`, ENTITY);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err, 'este producto'));
     }
+}
+
+/* ─── Escrituras: estantería ──────────────────────────────── */
+
+/** Ajusta la cantidad en estantería de un producto. Acepta valores
+ *  positivos (surtir anaquel) o negativos (reducir, p. ej. merma,
+ *  producto caducado retirado del anaquel). El resultado siempre
+ *  queda clampeado entre 0 y cantidad_total. */
+export async function reponerEstanteria(idProducto: string, cantidad: number): Promise<void> {
+    if (!Number.isFinite(cantidad) || cantidad === 0) return;
+    try {
+        await window.api.execute(
+            `UPDATE Inventario
+                SET cantidad_estanteria = GREATEST(0, LEAST(cantidad_estanteria + ?, cantidad_total))
+              WHERE id_producto = ?`,
+            [cantidad, idProducto],
+            ENTITY
+        );
+        const pName = await getProductName(idProducto);
+        await logActividad('reponer_estanteria', 'inventario', `Repuso estantería (${cantidad} pzas) de ${pName}`, ENTITY);
+        await crearNotificacion({
+            titulo: 'Estantería resurtida',
+            descripcion: `Se rellenaron ${cantidad} pzas de ${pName} en mostrador.`,
+            tipo: 'success'
+        });
+    } catch (err) {
+        throw new Error(limpiarMensajeIpc(err, 'la estantería de este producto'));
+    }
+}
+
+/** Rellena la estantería de un producto HASTA su meta en un solo
+ *  clic (botón "Estantería resurtida" de la tabla): calcula cuánto
+ *  falta contra meta_estanteria y se lo pasa a reponerEstanteria. No
+ *  hace nada si ya está en la meta (o por arriba) o si el producto no
+ *  tiene meta configurada. */
+export async function reponerEstanteriaAMeta(producto: {
+    id_producto: string;
+    cantidad_estanteria: number;
+    meta_estanteria: number | null;
+}): Promise<void> {
+    if (producto.meta_estanteria === null || producto.meta_estanteria <= 0) return;
+    const faltante = producto.meta_estanteria - producto.cantidad_estanteria;
+    if (faltante <= 0) return;
+    await reponerEstanteria(producto.id_producto, faltante);
+    const pName = await getProductName(producto.id_producto);
+    await logActividad('reponer_estanteria', 'inventario', `Repuso estantería a meta (${faltante} pzas) de ${pName}`, ENTITY);
 }
 
 /* ─── Escrituras: entradas ────────────────────────────────── */
@@ -550,6 +955,8 @@ export async function crearEntrada(payload: EntradaPayload): Promise<string> {
         // no para esto — ver el encabezado del archivo). El promedio ya
         // calculado sí queda en Entrada.costo_compra_promedio; lo único que
         // se pierde por ahora es el detalle línea por línea de cómo se armó.
+        const pName = await getProductName(payload.id_producto);
+        await logActividad('crear_entrada', 'inventario', `Entrada de ${payload.cantidad_total} pzas de ${pName}`, ENTITY);
     } catch (err) {
         throw new Error(limpiarMensajeIpc(err));
     }

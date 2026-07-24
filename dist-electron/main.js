@@ -1964,6 +1964,7 @@ async function startMySQL() {
 	await waitUntilReady();
 	console.log("MySQL listo.");
 	await ensureSchemaLoaded();
+	await ensureLoteEnteradoColumns();
 }
 /** Convierte el .sql pensado para el cliente `mysql` (con bloques
 *  DELIMITER $$ para procedimientos/triggers) en texto que el driver
@@ -1974,12 +1975,40 @@ async function startMySQL() {
 function toExecutableSql(rawSqlFile) {
 	return rawSqlFile.split("\n").filter((line) => !/^\s*DELIMITER\s+/i.test(line)).join("\n").replace(/\$\$/g, ";");
 }
+/** Cuántas tablas define el .sql (cuenta los "CREATE TABLE X (" —
+*  no las vistas, esas no cuentan como "tabla core" para decidir si
+*  el esquema quedó completo). Se calcula del archivo en vez de
+*  hardcodear un número para que nunca se desactualice al agregar
+*  tablas nuevas (ej. Notificacion). */
+function contarTablasEsperadas(rawSqlFile) {
+	const matches = rawSqlFile.match(/^CREATE TABLE\s+\w+/gim);
+	return matches ? matches.length : 0;
+}
 /** Si `la_cuchilla` está vacía (recién creada por el
-*  CREATE DATABASE IF NOT EXISTS de main.ts), carga el esquema
-*  empaquetado automáticamente. Si ya tiene tablas, no toca nada
-*  — así no se pisa nada si la base ya se cargó antes. */
+*  CREATE DATABASE IF NOT EXISTS de abajo), carga el esquema
+*  empaquetado automáticamente. Si ya tiene TODAS sus tablas, no
+*  toca nada — así no se pisa nada si la base ya se cargó antes.
+*
+*  Antes esto decidía "ya está instalada" con solo `total > 0`, sin
+*  importar CUÁNTAS tablas hubiera. Eso reventaba feo si la base se
+*  quedaba a medias (ej. mysqld se mató a la fuerza a mitad de la
+*  primera corrida, o el proceso se cerró justo durante el `conn.query`
+*  de más abajo): quedaban 1-2 tablas sueltas, el guardián las veía
+*  como "ya instalada" y se saltaba el resto del esquema para
+*  siempre — y entonces ensureLoteEnteradoColumns (o cualquier otra
+*  cosa que espere una tabla completa) tronaba con
+*  "Table 'la_cuchilla.lote' doesn't exist", con un stack trace que
+*  no explica nada de esto.
+*
+*  Ahora se compara el conteo real contra cuántas tablas define el
+*  .sql: si son menos, la base quedó a medias — no hay nada valioso
+*  que conservar ahí (el propio esquema dice explícitamente que no
+*  está pensado para eso), así que se tira y se recrea sola. */
 async function ensureSchemaLoaded() {
 	const mysql = await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1));
+	if (!fs.existsSync(schemaSqlPath)) throw new Error(`No encontré el esquema para cargarlo: ${schemaSqlPath}`);
+	const rawSql = fs.readFileSync(schemaSqlPath, "utf8");
+	const tablasEsperadas = contarTablasEsperadas(rawSql);
 	const setupConn = await mysql.createConnection({
 		host: "127.0.0.1",
 		port: 54320,
@@ -1993,15 +2022,27 @@ async function ensureSchemaLoaded() {
 		user: "root",
 		database: "la_cuchilla"
 	});
-	const [rows] = await probe.query("SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = 'la_cuchilla'");
+	const [rows] = await probe.query(`SELECT COUNT(*) AS total FROM information_schema.tables
+         WHERE table_schema = 'la_cuchilla' AND table_type = 'BASE TABLE'`);
 	await probe.end();
-	if (rows[0].total > 0) {
-		console.log(`la_cuchilla ya tiene ${rows[0].total} tablas/vistas, no se recarga el esquema.`);
+	const tablasActuales = rows[0].total;
+	if (tablasActuales >= tablasEsperadas && tablasActuales > 0) {
+		console.log(`la_cuchilla ya tiene sus ${tablasActuales} tablas, no se recarga el esquema.`);
 		return;
 	}
-	if (!fs.existsSync(schemaSqlPath)) throw new Error(`la_cuchilla está vacía y no encontré el esquema para cargarlo solo: ${schemaSqlPath}`);
-	console.log("la_cuchilla está vacía: cargando esquema_la_cuchilla_final.sql...");
-	const executableSql = toExecutableSql(fs.readFileSync(schemaSqlPath, "utf8"));
+	if (tablasActuales > 0) {
+		console.warn(`la_cuchilla quedó a medias (${tablasActuales}/${tablasEsperadas} tablas) — probablemente una corrida anterior se interrumpió. Recreando desde cero...`);
+		const dropConn = await mysql.createConnection({
+			host: "127.0.0.1",
+			port: 54320,
+			user: "root"
+		});
+		await dropConn.query("DROP DATABASE la_cuchilla");
+		await dropConn.query("CREATE DATABASE la_cuchilla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+		await dropConn.end();
+	}
+	console.log("Cargando esquema_la_cuchilla_final.sql...");
+	const executableSql = toExecutableSql(rawSql);
 	const conn = await mysql.createConnection({
 		host: "127.0.0.1",
 		port: 54320,
@@ -2012,6 +2053,40 @@ async function ensureSchemaLoaded() {
 	try {
 		await conn.query(executableSql);
 		console.log("Esquema cargado correctamente.");
+	} finally {
+		await conn.end();
+	}
+}
+/** Migración ligera e idempotente: agrega las columnas `enterado` /
+*  `enterado_por` / `enterado_en` a Lote si todavía no existen. Es
+*  necesaria además de ensureSchemaLoaded() porque esa función SOLO
+*  carga el .sql completo cuando la base está totalmente vacía — si
+*  ya tenías la_cuchilla corriendo de antes (con datos), nunca vuelve
+*  a tocar el esquema y estas columnas nuevas jamás aparecerían solas. */
+async function ensureLoteEnteradoColumns() {
+	const conn = await (await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1))).createConnection({
+		host: "127.0.0.1",
+		port: 54320,
+		user: "root",
+		database: "la_cuchilla"
+	});
+	try {
+		const [tabla] = await conn.query(`SELECT 1 FROM information_schema.tables
+             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' LIMIT 1`);
+		if (tabla.length === 0) {
+			console.warn("ensureLoteEnteradoColumns: la tabla Lote no existe todavía, se omite esta migración (revisa ensureSchemaLoaded).");
+			return;
+		}
+		const [rows] = await conn.query(`SELECT COLUMN_NAME FROM information_schema.columns
+             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' AND COLUMN_NAME = 'enterado'`);
+		if (rows.length > 0) return;
+		console.log("Migrando tabla Lote: agregando columnas enterado/enterado_por/enterado_en...");
+		await conn.query(`ALTER TABLE Lote
+                ADD COLUMN enterado BOOLEAN DEFAULT FALSE,
+                ADD COLUMN enterado_por CHAR(36),
+                ADD COLUMN enterado_en TIMESTAMP NULL,
+                ADD CONSTRAINT fk_lote_enterado_por FOREIGN KEY (enterado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL`);
+		console.log("Migración de Lote completada.");
 	} finally {
 		await conn.end();
 	}

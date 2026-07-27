@@ -9,6 +9,8 @@ import NuevoUsuario from './newusers';
 import DetalleUsuario from './detailsuser';
 import AsignarCredenciales from '../auth/credentials.tsx';
 import { listarUsuarios, revocarCredenciales, type Usuario } from '../../../src/services/user.service.ts';
+import { useAuth } from '../../../src/context/AuthContext';
+import { esDev, esSoloLectura } from '../../../src/utils/permisos';
 import Toast, { useToast } from '../../components/Toast .tsx';
 import '../../css/user.css';
 
@@ -16,6 +18,13 @@ import '../../css/user.css';
    Componente principal — sólo visual, sin lógica real de datos
 ──────────────────────────────────────────────────────────────── */
 export default function Usuarios() {
+    const { usuario: miUsuario } = useAuth();
+    const soyDev = esDev(miUsuario?.rol);
+    // Contador: ve el personal pero no puede crear, editar, revocar
+    // accesos ni asignar credenciales — mismo "Solo lectura" que ya
+    // se mostraba en la tabla de detailsuser.tsx para el módulo
+    // Personal.
+    const soloLecturaPersonal = esSoloLectura(miUsuario?.rol, 'personal');
     const [showNewUser, setShowNewUser] = useState(false);
     const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
     // Usuario "Sin Acceso" al que se le está por asignar correo + password
@@ -66,6 +75,11 @@ export default function Usuarios() {
     const filteredUsuarios = useMemo(() => {
         const term = busqueda.trim().toLowerCase();
         return listaUsuarios.filter((u) => {
+            // Los Dev son invisibles para cualquiera que no sea Dev: ni
+            // cuentan en los totales, ni aparecen en la búsqueda ni en
+            // el filtro por rol.
+            if (u.rol === 'Dev' && !soyDev) return false;
+
             const matchesTerm =
                 !term ||
                 `${u.nombres} ${u.apellido_paterno}`.toLowerCase().includes(term) ||
@@ -80,7 +94,7 @@ export default function Usuarios() {
 
             return matchesTerm && matchesRol && matchesCredenciales;
         });
-    }, [listaUsuarios, busqueda, filtroRol, filtroCredenciales]);
+    }, [listaUsuarios, busqueda, filtroRol, filtroCredenciales, soyDev]);
 
     // Un solo arreglo ordenado (activos primero, luego historial) para
     // que la paginación avance de corrido sobre los dos grupos, en vez
@@ -179,6 +193,10 @@ export default function Usuarios() {
     // Filtra antes de abrir el modal de confirmación: si el perfil ya
     // no tiene credenciales, no tiene caso preguntar "¿revocar acceso?".
     const handleSolicitarEliminar = (usuario: Usuario) => {
+        if (soloLecturaPersonal) {
+            showError("Sin permiso", "Tu rol solo tiene acceso de lectura a Personal.");
+            return;
+        }
         if (!usuario.auth_usuario) {
             showError("Error", 'Este perfil no tiene credenciales activas; no hay nada que eliminar.');
             return;
@@ -187,6 +205,10 @@ export default function Usuarios() {
     };
 
     const handleAgregarCredenciales = (usuario: Usuario) => {
+        if (soloLecturaPersonal) {
+            showError("Sin permiso", "Tu rol solo tiene acceso de lectura a Personal.");
+            return;
+        }
         // Atajo desde el menú de la tarjeta: va directo a la pantalla de
         // AsignarCredenciales, sin pasar primero por el detalle completo.
         setUsuarioParaCredenciales(usuario);
@@ -230,6 +252,7 @@ export default function Usuarios() {
                     onBack={() => setUsuarioSeleccionado(null)}
                     showToast={showToast}
                     showError={showError}
+                    soloLectura={soloLecturaPersonal}
                 />
                 <Toast toast={toast} />
                 <ErrorModal isOpen={errorModal.isOpen} onClose={() => setErrorModal({ ...errorModal, isOpen: false })} title={errorModal.title} message={errorModal.message} />
@@ -245,7 +268,7 @@ export default function Usuarios() {
                         <h1>Personal del Sistema</h1>
                         <p>Gestiona usuarios y sus permisos según el rol asignado.</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowNewUser(true)}>
+                    <button className="btn btn-primary" onClick={() => setShowNewUser(true)} style={soloLecturaPersonal ? { display: 'none' } : undefined}>
                         <UserPlus size={18} />
                         Agregar nuevo usuario
                     </button>
@@ -271,7 +294,7 @@ export default function Usuarios() {
                             placeholder="Todos los roles"
                             options={[
                                 { value: '', label: 'Todos los Roles' },
-                                { value: 'Dev', label: 'Dev' },
+                                ...(soyDev ? [{ value: 'Dev', label: 'Dev' }] : []),
                                 { value: 'administrador', label: 'Administrador' },
                                 { value: 'cajero', label: 'Cajero' },
                                 { value: 'contador', label: 'Contador' },
@@ -364,11 +387,11 @@ export default function Usuarios() {
                 title="Revocar Acceso por Completo"
                 message={`¿Estás seguro de que deseas eliminar permanentemente las credenciales de ${usuarioAEliminar?.nombres} ${usuarioAEliminar?.apellido_paterno}? Las credenciales de acceso se borrarán del servidor de autenticación de inmediato. El perfil se mandará al fondo de la lista para conservar su historial.`}
             />
-            <ErrorModal 
-                isOpen={errorModal.isOpen} 
-                onClose={() => setErrorModal({ ...errorModal, isOpen: false })} 
-                title={errorModal.title} 
-                message={errorModal.message} 
+            <ErrorModal
+                isOpen={errorModal.isOpen}
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title={errorModal.title}
+                message={errorModal.message}
             />
             <Toast toast={toast} />
         </>

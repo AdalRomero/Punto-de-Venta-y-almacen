@@ -1,0 +1,982 @@
+/* =============================================
+   App Cuchilla — Estilos de Reportes
+   Usa las variables de index.css (--cuh-*), mismo
+   lenguaje visual que inventario.css.
+   ============================================= */
+
+.rep-page {
+    padding: 32px;
+    background: var(--cuh-bg);
+    min-height: 100vh;
+}
+
+.rep-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* =============================================
+   Encabezado
+   ============================================= */
+.rep-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.rep-header-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.rep-header-subtitle {
+    font-size: 14px;
+    color: var(--cuh-text-muted);
+    margin: 4px 0 0;
+}
+
+.rep-header-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rep-header-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* =============================================
+   Tabs (Estadísticas / Historial)
+   ============================================= */
+.rep-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    width: fit-content;
+    margin-bottom: 20px;
+}
+
+.rep-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: calc(var(--cuh-radius-lg) - 4px);
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-muted);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rep-tab:hover {
+    color: var(--cuh-text-dark);
+}
+
+.rep-tab.active {
+    background: var(--cuh-primary);
+    color: white;
+}
+
+/* =============================================
+   Filtro de fechas
+   ============================================= */
+.rep-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.rep-preset-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rep-preset-btn {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--cuh-border);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rep-preset-btn:hover {
+    border-color: var(--cuh-primary);
+    color: var(--cuh-primary);
+}
+
+.rep-preset-btn.active {
+    background: var(--cuh-primary);
+    border-color: var(--cuh-primary);
+    color: white;
+}
+
+.rep-rango-personalizado {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: var(--cuh-radius-lg);
+    border: 1px solid var(--cuh-border);
+    background: var(--cuh-bg-white);
+    color: var(--cuh-text-muted);
+    font-size: 12.5px;
+}
+
+.rep-rango-personalizado input[type="date"] {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    color: var(--cuh-text-dark);
+    font-family: inherit;
+}
+
+.rep-rango-personalizado input[type="date"]:focus {
+    outline: none;
+}
+
+/* =============================================
+   Bento grid — Estadísticas
+   Un solo grid de 12 columnas reutilizado en cada
+   "fila" de la pestaña. .span-N controla cuánto
+   ocupa cada tarjeta; en móvil todo cae a 1 columna
+   y respeta el orden del DOM (lo importante ya está
+   arriba porque así se escribió el JSX).
+   ============================================= */
+.rep-bento {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.rep-bento-cell {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-xl);
+    padding: 20px;
+    box-shadow: var(--cuh-shadow-sm);
+    min-width: 0;
+}
+
+.span-3 {
+    grid-column: span 3;
+}
+
+.span-4 {
+    grid-column: span 4;
+}
+
+.span-5 {
+    grid-column: span 5;
+}
+
+.span-6 {
+    grid-column: span 6;
+}
+
+.span-7 {
+    grid-column: span 7;
+}
+
+.span-8 {
+    grid-column: span 8;
+}
+
+.span-12 {
+    grid-column: span 12;
+}
+
+@media (max-width: 1100px) {
+
+    .span-5,
+    .span-7 {
+        grid-column: span 6;
+    }
+
+    .span-3,
+    .span-4 {
+        grid-column: span 6;
+    }
+
+    .span-8 {
+        grid-column: span 12;
+    }
+}
+
+@media (max-width: 720px) {
+    .rep-bento {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .span-3,
+    .span-4,
+    .span-5,
+    .span-6,
+    .span-7,
+    .span-8,
+    .span-12 {
+        grid-column: span 1;
+    }
+}
+
+/* Segunda fila en adelante: tono más discreto — menos padding,
+   sombra más suave — para que el ojo entienda "esto es de consulta,
+   no lo primero que hay que ver" sin necesitar otra pestaña. */
+.rep-bento-quiet {
+    padding: 16px 18px;
+    box-shadow: none;
+    background: var(--cuh-bg);
+}
+
+.rep-bento-quiet .rep-panel-title {
+    font-size: 12.5px;
+    margin-bottom: 10px;
+}
+
+/* =============================================
+   Tarjeta hero — resumen del periodo
+   ============================================= */
+.rep-bento-hero {
+    border-color: var(--cuh-border);
+    border-width: 1px;
+}
+
+.rep-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.rep-hero-top .rep-panel-title {
+    margin: 0;
+}
+
+.rep-hero-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--cuh-border-light);
+}
+
+.rep-hero-value {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--cuh-text-dark);
+    margin: 2px 0 0;
+    letter-spacing: -0.01em;
+}
+
+.rep-hero-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rep-hero-stat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rep-hero-stat-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary);
+}
+
+.rep-hero-stat-icon.tone-green {
+    background: var(--cuh-success-bg);
+    color: var(--cuh-success);
+}
+
+.rep-hero-stat-icon.tone-yellow {
+    background: var(--cuh-warning-bg);
+    color: var(--cuh-warning);
+}
+
+.rep-hero-stat-texto {
+    flex-shrink: 0;
+}
+
+.rep-hero-stat-value {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 1px 0 0;
+}
+
+.rep-hero-stat .rep-delta {
+    margin-left: auto;
+}
+
+.rep-hero-footer {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    margin: 16px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--cuh-border-light);
+}
+
+/* =============================================
+   Tarjeta destacada — "¿por qué cambió tu ganancia?"
+   Fondo tintado para que compita visualmente con el
+   hero sin ser una tabla más entre otras tablas.
+   ============================================= */
+.rep-bento-highlight {
+    background: linear-gradient(180deg, var(--cuh-primary-50) 0%, var(--cuh-bg-white) 55%);
+    border-color: var(--cuh-primary-light);
+}
+
+.rep-insight-frase {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--cuh-text-dark);
+    line-height: 1.45;
+    margin: 0 0 16px;
+}
+
+.rep-efecto-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.rep-efecto-row {
+    min-width: 0;
+}
+
+.rep-efecto-cabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.rep-efecto-etiqueta {
+    color: var(--cuh-text-muted);
+    font-weight: 600;
+}
+
+.rep-efecto-track {
+    height: 8px;
+    background: var(--cuh-border-light);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rep-efecto-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.25s ease;
+}
+
+.rep-efecto-fill-up {
+    background: var(--cuh-success);
+}
+
+.rep-efecto-fill-down {
+    background: var(--cuh-danger, #dc2626);
+}
+
+/* =============================================
+   Botón-interruptor tipo acordeón (detalle completo
+   precio-vs-volumen): se ve como un panel-title pero
+   es clickeable y trae su propia flecha.
+   ============================================= */
+.rep-toggle-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    cursor: pointer;
+    text-align: left;
+}
+
+.rep-toggle-switch:hover {
+    color: var(--cuh-primary);
+}
+
+.rep-detalle-tabla-wrap {
+    margin-top: 14px;
+    overflow-x: auto;
+}
+
+/* =============================================
+   Listas "top" en formato de 2 columnas — para que
+   la tarjeta de rentabilidad (más ancha) no se vea
+   como una sola lista larga y angosta.
+   ============================================= */
+.rep-top-list-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+}
+
+@media (max-width: 640px) {
+    .rep-top-list-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =============================================
+   Paneles genéricos (gráfica, top productos, tabla fiscal)
+   ============================================= */
+.rep-panel {
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    padding: 20px;
+    box-shadow: var(--cuh-shadow-sm);
+    margin-bottom: 20px;
+}
+
+.rep-panel-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--cuh-text-dark);
+    margin: 0 0 14px;
+}
+
+.rep-panel-highlight {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--cuh-primary);
+    margin: 0;
+}
+
+/* Variante compacta — para las tarjetas de mermas/devoluciones, que
+   muestran dos números uno junto al otro en vez de uno solo grande. */
+.rep-panel-highlight-sm {
+    font-size: 19px;
+}
+
+.rep-mini-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 4px;
+}
+
+.rep-panel-note {
+    font-size: 12px;
+    color: var(--cuh-text-muted);
+    margin: 6px 0 0;
+}
+
+.rep-loading,
+.rep-empty {
+    font-size: 13px;
+    color: var(--cuh-text-muted);
+    text-align: center;
+    padding: 24px 0;
+    margin: 0;
+}
+
+/* =============================================
+   Gráfica de ventas por día — barras en CSS puro
+   ============================================= */
+.rep-kpi-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--cuh-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.rep-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 180px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+/* Gráficas de conteo FIJO (7 días de la semana, 24 horas): no tiene
+   caso hacerlas scrollables — con columnas de ancho fijo y poco
+   espacio se recortaban y quedaban "desfasadas" contra sus
+   etiquetas. Aquí las columnas se reparten el ancho completo. */
+.rep-bar-chart-compacto {
+    height: 110px;
+    overflow-x: hidden;
+}
+
+.rep-bar-chart-compacto .rep-bar-col {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.rep-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 32px;
+    height: 100%;
+}
+
+.rep-bar-valor {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--cuh-text-muted);
+    white-space: nowrap;
+    height: 12px;
+    line-height: 12px;
+}
+
+.rep-bar-track {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+}
+
+.rep-bar-fill {
+    width: 100%;
+    min-height: 4px;
+    background: var(--cuh-primary);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.25s ease;
+}
+
+.rep-bar-label {
+    font-size: 10px;
+    color: var(--cuh-text-muted);
+    white-space: nowrap;
+}
+
+/* =============================================
+   Top productos
+   ============================================= */
+.rep-top-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rep-top-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.rep-top-rank {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--cuh-primary-50);
+    color: var(--cuh-primary);
+    font-weight: 700;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rep-top-nombre {
+    flex: 1;
+    color: var(--cuh-text-dark);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rep-top-unidades {
+    color: var(--cuh-text-muted);
+    font-size: 12px;
+}
+
+.rep-top-total {
+    color: var(--cuh-text-dark);
+    font-weight: 700;
+}
+
+/* =============================================
+   Búsqueda (Historial)
+   ============================================= */
+.rep-busqueda {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    color: var(--cuh-text-muted);
+    margin-bottom: 16px;
+    max-width: 420px;
+}
+
+.rep-busqueda input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 13.5px;
+    color: var(--cuh-text-dark);
+    font-family: inherit;
+}
+
+.rep-busqueda input:focus {
+    outline: none;
+}
+
+/* =============================================
+   Tabla de historial
+   ============================================= */
+.rep-panel-tabla {
+    padding: 0;
+    overflow-x: auto;
+}
+
+.rep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rep-table thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--cuh-text-muted);
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--cuh-border);
+    white-space: nowrap;
+}
+
+.rep-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--cuh-border-light);
+    color: var(--cuh-text-dark);
+    white-space: nowrap;
+}
+
+.rep-table-simple thead th,
+.rep-table-simple tbody td {
+    padding: 10px 14px;
+}
+
+.rep-col-expand {
+    width: 32px;
+}
+
+.rep-row-clickable {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.rep-row-clickable:hover {
+    background: var(--cuh-bg);
+}
+
+.rep-col-total {
+    font-weight: 700;
+}
+
+.rep-row-detalle td {
+    background: var(--cuh-bg);
+    padding: 12px 16px 16px 44px;
+}
+
+.rep-table-detalle {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    background: var(--cuh-bg-white);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+    overflow: hidden;
+}
+
+.rep-table-detalle thead th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--cuh-text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cuh-border);
+}
+
+.rep-table-detalle tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cuh-border-light);
+    color: var(--cuh-text-dark);
+}
+
+.rep-table-detalle tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rep-pagination-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rep-pagination-info {
+    font-size: 12.5px;
+    color: var(--cuh-text-muted);
+    margin: 0;
+}
+
+/* Reutilizado del semáforo de Inventario: verde = ganancia positiva. */
+.tone-green {
+    color: var(--cuh-success);
+}
+
+.tone-red {
+    color: var(--cuh-danger, #dc2626);
+}
+
+/* =============================================
+   Comparativo de periodo
+   ============================================= */
+.rep-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.rep-panel-header .rep-panel-title {
+    margin: 0;
+}
+
+.rep-modo-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--cuh-bg);
+    border: 1px solid var(--cuh-border);
+    border-radius: var(--cuh-radius-lg);
+}
+
+.rep-modo-btn {
+    padding: 5px 10px;
+    border-radius: calc(var(--cuh-radius-lg) - 3px);
+    border: none;
+    background: transparent;
+    color: var(--cuh-text-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rep-modo-btn:hover {
+    color: var(--cuh-text-dark);
+}
+
+.rep-modo-btn.active {
+    background: var(--cuh-bg-white);
+    color: var(--cuh-primary);
+    box-shadow: var(--cuh-shadow-sm);
+}
+
+.rep-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    width: fit-content;
+}
+
+.rep-delta-up {
+    color: var(--cuh-success);
+}
+
+.rep-delta-down {
+    color: var(--cuh-danger, #dc2626);
+}
+
+.rep-delta-flat {
+    color: var(--cuh-text-muted);
+}
+
+/* =============================================
+   Productos sin movimiento — chips
+   ============================================= */
+.rep-sinmovimiento-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rep-chip {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--cuh-warning-bg);
+    color: var(--cuh-warning);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =============================================
+   Impresión
+   Solo se ve la pestaña activa, sin botones ni
+   filtros — y con un encabezado propio que dice
+   de qué periodo es el reporte.
+   ============================================= */
+.rep-print-header {
+    display: none;
+}
+
+@media print {
+    .rep-page {
+        padding: 0;
+        background: white;
+    }
+
+    .rep-header-actions,
+    .rep-tabs,
+    .rep-filtros,
+    .rep-busqueda,
+    .rep-pagination-bar,
+    .rep-modo-toggle,
+    .rep-row-clickable .rep-col-expand {
+        display: none !important;
+    }
+
+    .rep-print-header {
+        display: block;
+        margin-bottom: 18px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #222;
+    }
+
+    .rep-print-header h2 {
+        font-size: 17px;
+        margin: 0 0 3px;
+        color: #111;
+    }
+
+    .rep-print-header p {
+        font-size: 11.5px;
+        color: #444;
+        margin: 0;
+    }
+
+    /* En papel, un grid de 12 columnas apretuja demasiado cada tarjeta
+       — una sola columna, en el orden en que ya están (lo importante
+       primero), se lee mucho mejor. */
+    .rep-bento {
+        display: block;
+        margin-bottom: 0;
+    }
+
+    .rep-bento-cell {
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+    }
+
+    .span-3,
+    .span-4,
+    .span-5,
+    .span-6,
+    .span-7,
+    .span-8,
+    .span-12 {
+        grid-column: unset;
+    }
+
+    .rep-bento-highlight {
+        background: white !important;
+    }
+
+    .rep-panel,
+    .rep-bento-cell {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+        background: white;
+    }
+
+    .rep-panel-title,
+    .rep-hero-value,
+    .rep-panel-highlight {
+        color: #111 !important;
+    }
+
+    /* En papel no tiene caso un acordeón cerrado: se fuerza abierto
+       (ver useEffect de beforeprint) y se oculta la flecha, que no
+       sirve en una hoja impresa. */
+    .rep-toggle-switch {
+        cursor: default;
+    }
+
+    .rep-toggle-switch svg {
+        display: none;
+    }
+
+    .rep-table thead {
+        display: table-header-group;
+        /* repite encabezados en cada página */
+    }
+
+    .rep-row-detalle {
+        display: none;
+        /* al imprimir historial, solo el resumen por venta */
+    }
+}

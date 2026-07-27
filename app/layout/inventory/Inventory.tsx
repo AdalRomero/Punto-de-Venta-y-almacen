@@ -38,6 +38,7 @@ import {
     listarImpuestosVigentes,
     listarCodigosAlternosExistentes,
     listarLotesPorProducto,
+    listarTodosLosLotes,
     marcarLoteEnterado,
     actualizarLote,
     obtenerProducto,
@@ -50,9 +51,11 @@ import {
     type ProductoListado,
     type LoteListado,
     type LoteEditPayload,
+    type LoteExportRow,
     type AlertLevel,
 } from "../../../src/services/inventory.service";
 import { listarFamilias } from "../../../src/services/catalogos.service";
+import { exportarProductos, exportarLotes, exportarInventarioCompleto } from "../../../src/services/export.service";
 
 /* ─────────────────────────────────────────────────────────────
    Helpers
@@ -1029,6 +1032,13 @@ export default function Inventory() {
     const [familiaSearchTerm, setFamiliaSearchTerm] = useState("");
     const { toast, showToast } = useToast();
 
+    /* Botón "Exportar" del header: menú con las 3 opciones (Productos /
+     *  Lotes / Productos y Lotes) e indicador de generación en curso —
+     *  "Lotes" y "Productos y Lotes" primero traen listarTodosLosLotes(),
+     *  así que no son instantáneos como el resto de los botones. */
+    const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
     // Modales de error y advertencia
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
     const showError = (title: string, message: string) => setErrorModal({ isOpen: true, title, message });
@@ -1322,6 +1332,35 @@ export default function Inventory() {
         }
     };
 
+    /** Botón "Exportar" del header. 'productos' usa lo que ya está en
+     *  memoria (visibleProductos, respeta búsqueda/familia/estado
+     *  activos); 'lotes' y 'todo' primero traen TODOS los lotes de
+     *  TODOS los productos con listarTodosLosLotes(), porque la tabla
+     *  de Inventory.tsx nunca tiene esa lista completa cargada. */
+    const handleExportar = async (tipo: "productos" | "lotes" | "todo") => {
+        setIsExportDropdownOpen(false);
+        setIsExporting(true);
+        try {
+            if (tipo === "productos") {
+                exportarProductos(visibleProductos);
+            } else if (tipo === "lotes") {
+                const lotes: LoteExportRow[] = await listarTodosLosLotes();
+                exportarLotes(lotes);
+            } else {
+                const lotes: LoteExportRow[] = await listarTodosLosLotes();
+                exportarInventarioCompleto(visibleProductos, lotes);
+            }
+        } catch (err) {
+            setErrorModal({
+                isOpen: true,
+                title: "Error al exportar",
+                message: err instanceof Error ? err.message : "No se pudo generar el archivo.",
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     /* KPIs — cada card cuenta exactamente el mismo conjunto de niveles
      *  que activa al hacer click (ver CARD_FILTROS), así el número que
      *  se ve siempre coincide con lo que trae el filtro. Se separa
@@ -1354,10 +1393,70 @@ export default function Inventory() {
                         </p>
                     </div>
                     <div className="inv-header-actions">
-                        <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <Download size={16} />
-                            <span>Exportar</span>
-                        </button>
+                        <div style={{ position: "relative" }}>
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                style={{ display: "flex", alignItems: "center", gap: 8 }}
+                                disabled={isExporting}
+                                onClick={() => setIsExportDropdownOpen((o) => !o)}
+                            >
+                                {isExporting ? <Loader2 size={16} className="inv-spin" /> : <Download size={16} />}
+                                <span>{isExporting ? "Generando…" : "Exportar"}</span>
+                                <ChevronDown size={16} className={`chevron${isExportDropdownOpen ? " open" : ""}`} />
+                            </button>
+
+                            {isExportDropdownOpen && (
+                                <>
+                                    <div
+                                        style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                                        onClick={() => setIsExportDropdownOpen(false)}
+                                    />
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            top: "calc(100% + 6px)",
+                                            left: 0,
+                                            zIndex: 41,
+                                            minWidth: 220,
+                                            background: "var(--cuh-surface, #fff)",
+                                            border: "1px solid var(--cuh-border-light)",
+                                            borderRadius: 10,
+                                            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                                            padding: 6,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: 2,
+                                        }}
+                                    >
+                                        <button
+                                            type="button"
+                                            className="inv-familia-option"
+                                            style={{ width: "100%", textAlign: "left" }}
+                                            onClick={() => handleExportar("productos")}
+                                        >
+                                            Productos
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="inv-familia-option"
+                                            style={{ width: "100%", textAlign: "left" }}
+                                            onClick={() => handleExportar("lotes")}
+                                        >
+                                            Lotes
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="inv-familia-option"
+                                            style={{ width: "100%", textAlign: "left" }}
+                                            onClick={() => handleExportar("todo")}
+                                        >
+                                            Productos y Lotes (conjunto)
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                         <button className="btn btn-ghost" style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={() => setIsEntradaModalOpen(true)}>
                             <Package size={16} />
                             <span>Registrar Entrada</span>
@@ -1757,4 +1856,4 @@ export default function Inventory() {
             <Toast toast={toast} />
         </div>
     );
-}
+}   

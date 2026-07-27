@@ -18,6 +18,8 @@ import {
 import AsignarCredenciales from '../auth/credentials.tsx';
 import CambiarCorreo from '../auth/email.tsx';
 import CambiarPassword from '../auth/password.tsx';
+import { useAuth } from '../../../src/context/AuthContext';
+import { esDev } from '../../../src/utils/permisos';
 import '../../css/detailsuser.css';
 
 /* ─────────────────────────────────────────────────────────────
@@ -70,6 +72,9 @@ interface DetalleUsuarioProps {
     onBack: () => void;
     showToast?: (type: 'success' | 'error', msg: string) => void;
     showError?: (title: string, msg: string) => void;
+    /** true para roles con acceso "Solo lectura" a Personal (contador):
+     *  puede ver el perfil y la actividad, pero no editar nada. */
+    soloLectura?: boolean;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -130,7 +135,10 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
 /* ─────────────────────────────────────────────────────────────
    Componente principal — sólo visual, sin lógica real de datos
 ──────────────────────────────────────────────────────────────── */
-export default function DetalleUsuario({ usuario, onBack, showToast, showError }: DetalleUsuarioProps) {
+export default function DetalleUsuario({ usuario, onBack, showToast, showError, soloLectura = false }: DetalleUsuarioProps) {
+    const { usuario: miUsuario } = useAuth();
+    const soyDev = esDev(miUsuario?.rol);
+    const soyAdminODev = soyDev || miUsuario?.rol === 'administrador';
     // Copia local: se actualiza tras cada guardado exitoso para que
     // el encabezado y las vistas de solo-lectura reflejen el cambio
     // de inmediato, sin esperar a que el padre vuelva a pasar props.
@@ -240,6 +248,19 @@ export default function DetalleUsuario({ usuario, onBack, showToast, showError }
 
         if (!formData.nombres.trim() || !formData.apellido_paterno.trim() || !formData.usuario.trim()) {
             showError?.('Campos incompletos', 'Nombres, Apellido Paterno y Usuario son obligatorios.');
+            return;
+        }
+
+        // Resguardo: el selector ya oculta "Dev" para quien no es Dev,
+        // pero se valida también aquí por si formData.rol llegó a
+        // 'Dev' por cualquier otro camino.
+        if (formData.rol === 'Dev' && !soyDev) {
+            showError?.('Sin permiso', 'Solo un usuario Dev puede asignar el rol Dev.');
+            return;
+        }
+
+        if (formData.rol !== usuarioActual.rol && !soyAdminODev) {
+            showError?.('Sin permiso', 'No tienes permiso para cambiar tu rol.');
             return;
         }
 
@@ -416,9 +437,11 @@ export default function DetalleUsuario({ usuario, onBack, showToast, showError }
                                 </button>
                             </>
                         ) : (
-                            <button className="btn btn-outline-primary" onClick={() => setEditando(true)}>
-                                <Edit3 size={16} /> Editar Perfil
-                            </button>
+                            !soloLectura && (
+                                <button className="btn btn-outline-primary" onClick={() => setEditando(true)}>
+                                    <Edit3 size={16} /> Editar Perfil
+                                </button>
+                            )
                         )}
                     </div>
                 </div>
@@ -457,8 +480,9 @@ export default function DetalleUsuario({ usuario, onBack, showToast, showError }
                                                 value={formData.rol}
                                                 onChange={handleChange('rol')}
                                                 id="du-rol"
+                                                disabled={!soyAdminODev}
                                                 options={[
-                                                    { value: 'Dev', label: 'Dev' },
+                                                    ...(soyDev ? [{ value: 'Dev', label: 'Dev' }] : []),
                                                     { value: 'administrador', label: 'Administrador' },
                                                     { value: 'cajero', label: 'Cajero' },
                                                     { value: 'contador', label: 'Contador' },

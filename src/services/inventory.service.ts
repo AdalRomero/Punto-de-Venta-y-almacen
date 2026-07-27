@@ -164,7 +164,7 @@ async function logActividad(accion: string, entidad: string, descripcion: string
             [actorId, actorId, accion, entidad, descripcion],
             entityChannel
         );
-    } catch {}
+    } catch { }
 }
 
 async function getProductName(id: string): Promise<string> {
@@ -523,6 +523,98 @@ export async function listarLotesPorProducto(
 
         return {
             id_lote: row.id_lote,
+            cantidad: Number(row.cantidad),
+            cantidad_disponible: Number(row.cantidad_disponible),
+            fecha_caducidad: row.fecha_caducidad,
+            estado_lote: row.estado_lote,
+            unidad: row.unidad,
+            costo_compra: row.costo_compra != null ? Number(row.costo_compra) : null,
+            created: row.created,
+            alertLevel,
+            enterado: !!row.enterado,
+            enterado_por: row.enterado_por,
+            enterado_en: row.enterado_en,
+        };
+    });
+}
+
+/* ─── Lecturas: todos los lotes de todos los productos (exportar) ─── */
+
+/** Fila para exportar lotes (botón "Exportar" de Inventory.tsx) — mismo
+ *  shape que LoteListado, pero con los datos del producto dueño del
+ *  lote pegados encima, porque aquí ya no hay un único id_producto de
+ *  contexto como en el modal "Ver lotes". */
+export interface LoteExportRow extends LoteListado {
+    id_producto: string;
+    codigo_interno: string | null;
+    producto_nombre: string;
+    familia_nombre: string | null;
+}
+
+interface LoteExportRowRaw {
+    id_lote: string;
+    id_producto: string;
+    codigo_interno: string | null;
+    producto_nombre: string;
+    familia_nombre: string | null;
+    cantidad: number;
+    cantidad_disponible: number;
+    fecha_caducidad: string | Date | null;
+    estado_lote: LoteListado['estado_lote'];
+    unidad: 'piezas' | 'kilos';
+    costo_compra: number | string | null;
+    created: string;
+    enterado: number | boolean;
+    enterado_por: string | null;
+    enterado_en: string | null;
+    umbral_rojo_dias: number | null;
+    umbral_amarillo_dias: number | null;
+}
+
+/** Todos los lotes de TODOS los productos (activos e inactivos),
+ *  del más próximo a vencer al más lejano dentro de cada producto —
+ *  para la opción "Lotes" / "Productos y Lotes" del botón Exportar.
+ *  A diferencia de listarLotesPorProducto(), no recibe id_producto ni
+ *  umbrales: cada lote usa los umbrales de SU PROPIO producto, porque
+ *  aquí conviven lotes de productos distintos en una sola lista. */
+export async function listarTodosLosLotes(): Promise<LoteExportRow[]> {
+    const rows: LoteExportRowRaw[] = await window.api.query(
+        `SELECT
+            l.id_lote, l.id_producto, l.cantidad, l.cantidad_disponible, l.fecha_caducidad,
+            l.estado_lote, l.unidad, l.costo_compra, l.created,
+            l.enterado, l.enterado_por, l.enterado_en,
+            p.codigo_interno, p.nombre AS producto_nombre,
+            p.umbral_rojo_dias, p.umbral_amarillo_dias,
+            f.nombre AS familia_nombre
+         FROM Lote l
+         JOIN Producto p ON p.id_producto = l.id_producto
+         LEFT JOIN Familia f ON f.id_familia = p.id_familia
+         ORDER BY p.nombre ASC, (l.fecha_caducidad IS NULL), l.fecha_caducidad ASC, l.created DESC`
+    );
+
+    return rows.map((row) => {
+        const diasRestantes = diasRestantesHasta(row.fecha_caducidad);
+        let alertLevel: AlertLevel;
+        if (row.estado_lote === 'agotado') {
+            alertLevel = 'none';
+        } else if (diasRestantes === null) {
+            alertLevel = 'none';
+        } else if (diasRestantes <= 0) {
+            alertLevel = 'black';
+        } else if (row.umbral_rojo_dias !== null && diasRestantes <= row.umbral_rojo_dias) {
+            alertLevel = 'red';
+        } else if (row.umbral_amarillo_dias !== null && diasRestantes <= row.umbral_amarillo_dias) {
+            alertLevel = 'yellow';
+        } else {
+            alertLevel = 'green';
+        }
+
+        return {
+            id_lote: row.id_lote,
+            id_producto: row.id_producto,
+            codigo_interno: row.codigo_interno,
+            producto_nombre: row.producto_nombre,
+            familia_nombre: row.familia_nombre,
             cantidad: Number(row.cantidad),
             cantidad_disponible: Number(row.cantidad_disponible),
             fecha_caducidad: row.fecha_caducidad,

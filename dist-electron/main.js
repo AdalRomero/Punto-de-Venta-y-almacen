@@ -1,332 +1,153 @@
-import { createRequire } from "node:module";
-import { BrowserWindow, app, ipcMain } from "electron";
-import path from "path";
-import { fileURLToPath } from "url";
-import nodeCrypto from "crypto";
-import { execFileSync, spawn } from "child_process";
-import fs from "fs";
+import { createRequire as e } from "node:module";
+import { BrowserWindow as t, app as n, ipcMain as r } from "electron";
+import i from "path";
+import { fileURLToPath as a } from "url";
+import o from "crypto";
+import { execFileSync as s, spawn as c } from "child_process";
+import l from "fs";
 //#region \0rolldown/runtime.js
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esmMin = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
-var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
-var __exportAll = (all, no_symbols) => {
-	let target = {};
-	for (var name in all) __defProp(target, name, {
-		get: all[name],
-		enumerable: true
+var u = Object.create, d = Object.defineProperty, f = Object.getOwnPropertyDescriptor, p = Object.getOwnPropertyNames, ee = Object.getPrototypeOf, m = Object.prototype.hasOwnProperty, te = (e, t) => () => (e && (t = e(e = 0)), t), ne = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t.exports), re = (e, t) => {
+	let n = {};
+	for (var r in e) d(n, r, {
+		get: e[r],
+		enumerable: !0
 	});
-	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
-	return target;
-};
-var __copyProps = (to, from, except, desc) => {
-	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
-		key = keys[i];
-		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
-			get: ((k) => from[k]).bind(null, key),
-			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-		});
-	}
-	return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
-	value: mod,
-	enumerable: true
-}) : target, mod));
-var __toCommonJS = (mod) => __hasOwnProp.call(mod, "module.exports") ? mod["module.exports"] : __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __require = /* @__PURE__ */ createRequire(import.meta.url);
-//#endregion
-//#region node_modules/bcryptjs/index.js
-/**
-* The random implementation to use as a fallback.
-* @type {?function(number):!Array.<number>}
-* @inner
-*/
-var randomFallback = null;
-/**
-* Generates cryptographically secure random bytes.
-* @function
-* @param {number} len Bytes length
-* @returns {!Array.<number>} Random bytes
-* @throws {Error} If no random implementation is available
-* @inner
-*/
-function randomBytes(len) {
+	return t || d(n, Symbol.toStringTag, { value: "Module" }), n;
+}, h = (e, t, n, r) => {
+	if (t && typeof t == "object" || typeof t == "function") for (var i = p(t), a = 0, o = i.length, s; a < o; a++) s = i[a], !m.call(e, s) && s !== n && d(e, s, {
+		get: ((e) => t[e]).bind(null, s),
+		enumerable: !(r = f(t, s)) || r.enumerable
+	});
+	return e;
+}, g = (e, t, n) => (n = e == null ? {} : u(ee(e)), h(t || !e || !e.__esModule ? d(n, "default", {
+	value: e,
+	enumerable: !0
+}) : n, e)), _ = (e) => m.call(e, "module.exports") ? e["module.exports"] : h(d({}, "__esModule", { value: !0 }), e), v = /* @__PURE__ */ e(import.meta.url), y = null;
+function ie(e) {
 	try {
-		return crypto.getRandomValues(new Uint8Array(len));
+		return crypto.getRandomValues(new Uint8Array(e));
 	} catch {}
 	try {
-		return nodeCrypto.randomBytes(len);
+		return o.randomBytes(e);
 	} catch {}
-	if (!randomFallback) throw Error("Neither WebCryptoAPI nor a crypto module is available. Use bcrypt.setRandomFallback to set an alternative");
-	return randomFallback(len);
+	if (!y) throw Error("Neither WebCryptoAPI nor a crypto module is available. Use bcrypt.setRandomFallback to set an alternative");
+	return y(e);
 }
-/**
-* Sets the pseudo random number generator to use as a fallback if neither node's `crypto` module nor the Web Crypto
-*  API is available. Please note: It is highly important that the PRNG used is cryptographically secure and that it
-*  is seeded properly!
-* @param {?function(number):!Array.<number>} random Function taking the number of bytes to generate as its
-*  sole argument, returning the corresponding array of cryptographically secure random byte values.
-* @see http://nodejs.org/api/crypto.html
-* @see http://www.w3.org/TR/WebCryptoAPI/
-*/
-function setRandomFallback(random) {
-	randomFallback = random;
+function ae(e) {
+	y = e;
 }
-/**
-* Synchronously generates a salt.
-* @param {number=} rounds Number of rounds to use, defaults to 10 if omitted
-* @param {number=} seed_length Not supported.
-* @returns {string} Resulting salt
-* @throws {Error} If a random fallback is required but not set
-*/
-function genSaltSync(rounds, seed_length) {
-	rounds = rounds || GENSALT_DEFAULT_LOG2_ROUNDS;
-	if (typeof rounds !== "number") throw Error("Illegal arguments: " + typeof rounds + ", " + typeof seed_length);
-	if (rounds < 4) rounds = 4;
-	else if (rounds > 31) rounds = 31;
-	var salt = [];
-	salt.push("$2b$");
-	if (rounds < 10) salt.push("0");
-	salt.push(rounds.toString());
-	salt.push("$");
-	salt.push(base64_encode(randomBytes(BCRYPT_SALT_LEN), BCRYPT_SALT_LEN));
-	return salt.join("");
+function b(e, t) {
+	if (e ||= N, typeof e != "number") throw Error("Illegal arguments: " + typeof e + ", " + typeof t);
+	e < 4 ? e = 4 : e > 31 && (e = 31);
+	var n = [];
+	return n.push("$2b$"), e < 10 && n.push("0"), n.push(e.toString()), n.push("$"), n.push(A(ie(M), M)), n.join("");
 }
-/**
-* Asynchronously generates a salt.
-* @param {(number|function(Error, string=))=} rounds Number of rounds to use, defaults to 10 if omitted
-* @param {(number|function(Error, string=))=} seed_length Not supported.
-* @param {function(Error, string=)=} callback Callback receiving the error, if any, and the resulting salt
-* @returns {!Promise} If `callback` has been omitted
-* @throws {Error} If `callback` is present but not a function
-*/
-function genSalt(rounds, seed_length, callback) {
-	if (typeof seed_length === "function") callback = seed_length, seed_length = void 0;
-	if (typeof rounds === "function") callback = rounds, rounds = void 0;
-	if (typeof rounds === "undefined") rounds = GENSALT_DEFAULT_LOG2_ROUNDS;
-	else if (typeof rounds !== "number") throw Error("illegal arguments: " + typeof rounds);
-	function _async(callback) {
-		nextTick(function() {
+function x(e, t, n) {
+	if (typeof t == "function" && (n = t, t = void 0), typeof e == "function" && (n = e, e = void 0), e === void 0) e = N;
+	else if (typeof e != "number") throw Error("illegal arguments: " + typeof e);
+	function r(t) {
+		T(function() {
 			try {
-				callback(null, genSaltSync(rounds));
-			} catch (err) {
-				callback(err);
+				t(null, b(e));
+			} catch (e) {
+				t(e);
 			}
 		});
 	}
-	if (callback) {
-		if (typeof callback !== "function") throw Error("Illegal callback: " + typeof callback);
-		_async(callback);
-	} else return new Promise(function(resolve, reject) {
-		_async(function(err, res) {
-			if (err) {
-				reject(err);
+	if (n) {
+		if (typeof n != "function") throw Error("Illegal callback: " + typeof n);
+		r(n);
+	} else return new Promise(function(e, t) {
+		r(function(n, r) {
+			if (n) {
+				t(n);
 				return;
 			}
-			resolve(res);
+			e(r);
 		});
 	});
 }
-/**
-* Synchronously generates a hash for the given password.
-* @param {string} password Password to hash
-* @param {(number|string)=} salt Salt length to generate or salt to use, default to 10
-* @returns {string} Resulting hash
-*/
-function hashSync(password, salt) {
-	if (typeof salt === "undefined") salt = GENSALT_DEFAULT_LOG2_ROUNDS;
-	if (typeof salt === "number") salt = genSaltSync(salt);
-	if (typeof password !== "string" || typeof salt !== "string") throw Error("Illegal arguments: " + typeof password + ", " + typeof salt);
-	return _hash(password, salt);
+function S(e, t) {
+	if (t === void 0 && (t = N), typeof t == "number" && (t = b(t)), typeof e != "string" || typeof t != "string") throw Error("Illegal arguments: " + typeof e + ", " + typeof t);
+	return H(e, t);
 }
-/**
-* Asynchronously generates a hash for the given password.
-* @param {string} password Password to hash
-* @param {number|string} salt Salt length to generate or salt to use
-* @param {function(Error, string=)=} callback Callback receiving the error, if any, and the resulting hash
-* @param {function(number)=} progressCallback Callback successively called with the percentage of rounds completed
-*  (0.0 - 1.0), maximally once per `MAX_EXECUTION_TIME = 100` ms.
-* @returns {!Promise} If `callback` has been omitted
-* @throws {Error} If `callback` is present but not a function
-*/
-function hash(password, salt, callback, progressCallback) {
-	function _async(callback) {
-		if (typeof password === "string" && typeof salt === "number") genSalt(salt, function(err, salt) {
-			_hash(password, salt, callback, progressCallback);
-		});
-		else if (typeof password === "string" && typeof salt === "string") _hash(password, salt, callback, progressCallback);
-		else nextTick(callback.bind(this, Error("Illegal arguments: " + typeof password + ", " + typeof salt)));
+function C(e, t, n, r) {
+	function i(n) {
+		typeof e == "string" && typeof t == "number" ? x(t, function(t, i) {
+			H(e, i, n, r);
+		}) : typeof e == "string" && typeof t == "string" ? H(e, t, n, r) : T(n.bind(this, Error("Illegal arguments: " + typeof e + ", " + typeof t)));
 	}
-	if (callback) {
-		if (typeof callback !== "function") throw Error("Illegal callback: " + typeof callback);
-		_async(callback);
-	} else return new Promise(function(resolve, reject) {
-		_async(function(err, res) {
-			if (err) {
-				reject(err);
+	if (n) {
+		if (typeof n != "function") throw Error("Illegal callback: " + typeof n);
+		i(n);
+	} else return new Promise(function(e, t) {
+		i(function(n, r) {
+			if (n) {
+				t(n);
 				return;
 			}
-			resolve(res);
+			e(r);
 		});
 	});
 }
-/**
-* Compares two strings of the same length in constant time.
-* @param {string} known Must be of the correct length
-* @param {string} unknown Must be the same length as `known`
-* @returns {boolean}
-* @inner
-*/
-function safeStringCompare(known, unknown) {
-	var diff = known.length ^ unknown.length;
-	for (var i = 0; i < known.length; ++i) diff |= known.charCodeAt(i) ^ unknown.charCodeAt(i);
-	return diff === 0;
+function w(e, t) {
+	for (var n = e.length ^ t.length, r = 0; r < e.length; ++r) n |= e.charCodeAt(r) ^ t.charCodeAt(r);
+	return n === 0;
 }
-/**
-* Synchronously tests a password against a hash.
-* @param {string} password Password to compare
-* @param {string} hash Hash to test against
-* @returns {boolean} true if matching, otherwise false
-* @throws {Error} If an argument is illegal
-*/
-function compareSync(password, hash) {
-	if (typeof password !== "string" || typeof hash !== "string") throw Error("Illegal arguments: " + typeof password + ", " + typeof hash);
-	if (hash.length !== 60) return false;
-	return safeStringCompare(hashSync(password, hash.substring(0, hash.length - 31)), hash);
+function oe(e, t) {
+	if (typeof e != "string" || typeof t != "string") throw Error("Illegal arguments: " + typeof e + ", " + typeof t);
+	return t.length === 60 ? w(S(e, t.substring(0, t.length - 31)), t) : !1;
 }
-/**
-* Asynchronously tests a password against a hash.
-* @param {string} password Password to compare
-* @param {string} hashValue Hash to test against
-* @param {function(Error, boolean)=} callback Callback receiving the error, if any, otherwise the result
-* @param {function(number)=} progressCallback Callback successively called with the percentage of rounds completed
-*  (0.0 - 1.0), maximally once per `MAX_EXECUTION_TIME = 100` ms.
-* @returns {!Promise} If `callback` has been omitted
-* @throws {Error} If `callback` is present but not a function
-*/
-function compare(password, hashValue, callback, progressCallback) {
-	function _async(callback) {
-		if (typeof password !== "string" || typeof hashValue !== "string") {
-			nextTick(callback.bind(this, Error("Illegal arguments: " + typeof password + ", " + typeof hashValue)));
+function se(e, t, n, r) {
+	function i(n) {
+		if (typeof e != "string" || typeof t != "string") {
+			T(n.bind(this, Error("Illegal arguments: " + typeof e + ", " + typeof t)));
 			return;
 		}
-		if (hashValue.length !== 60) {
-			nextTick(callback.bind(this, null, false));
+		if (t.length !== 60) {
+			T(n.bind(this, null, !1));
 			return;
 		}
-		hash(password, hashValue.substring(0, 29), function(err, comp) {
-			if (err) callback(err);
-			else callback(null, safeStringCompare(comp, hashValue));
-		}, progressCallback);
+		C(e, t.substring(0, 29), function(e, r) {
+			e ? n(e) : n(null, w(r, t));
+		}, r);
 	}
-	if (callback) {
-		if (typeof callback !== "function") throw Error("Illegal callback: " + typeof callback);
-		_async(callback);
-	} else return new Promise(function(resolve, reject) {
-		_async(function(err, res) {
-			if (err) {
-				reject(err);
+	if (n) {
+		if (typeof n != "function") throw Error("Illegal callback: " + typeof n);
+		i(n);
+	} else return new Promise(function(e, t) {
+		i(function(n, r) {
+			if (n) {
+				t(n);
 				return;
 			}
-			resolve(res);
+			e(r);
 		});
 	});
 }
-/**
-* Gets the number of rounds used to encrypt the specified hash.
-* @param {string} hash Hash to extract the used number of rounds from
-* @returns {number} Number of rounds used
-* @throws {Error} If `hash` is not a string
-*/
-function getRounds(hash) {
-	if (typeof hash !== "string") throw Error("Illegal arguments: " + typeof hash);
-	return parseInt(hash.split("$")[2], 10);
+function ce(e) {
+	if (typeof e != "string") throw Error("Illegal arguments: " + typeof e);
+	return parseInt(e.split("$")[2], 10);
 }
-/**
-* Gets the salt portion from a hash. Does not validate the hash.
-* @param {string} hash Hash to extract the salt from
-* @returns {string} Extracted salt part
-* @throws {Error} If `hash` is not a string or otherwise invalid
-*/
-function getSalt(hash) {
-	if (typeof hash !== "string") throw Error("Illegal arguments: " + typeof hash);
-	if (hash.length !== 60) throw Error("Illegal hash length: " + hash.length + " != 60");
-	return hash.substring(0, 29);
+function le(e) {
+	if (typeof e != "string") throw Error("Illegal arguments: " + typeof e);
+	if (e.length !== 60) throw Error("Illegal hash length: " + e.length + " != 60");
+	return e.substring(0, 29);
 }
-/**
-* Tests if a password will be truncated when hashed, that is its length is
-* greater than 72 bytes when converted to UTF-8.
-* @param {string} password The password to test
-* @returns {boolean} `true` if truncated, otherwise `false`
-*/
-function truncates(password) {
-	if (typeof password !== "string") throw Error("Illegal arguments: " + typeof password);
-	return utf8Length(password) > 72;
+function ue(e) {
+	if (typeof e != "string") throw Error("Illegal arguments: " + typeof e);
+	return E(e) > 72;
 }
-/**
-* Continues with the callback after yielding to the event loop.
-* @function
-* @param {function(...[*])} callback Callback to execute
-* @inner
-*/
-var nextTick = typeof setImmediate === "function" ? setImmediate : typeof scheduler === "object" && typeof scheduler.postTask === "function" ? scheduler.postTask.bind(scheduler) : setTimeout;
-/** Calculates the byte length of a string encoded as UTF8. */
-function utf8Length(string) {
-	var len = 0, c = 0;
-	for (var i = 0; i < string.length; ++i) {
-		c = string.charCodeAt(i);
-		if (c < 128) len += 1;
-		else if (c < 2048) len += 2;
-		else if ((c & 64512) === 55296 && (string.charCodeAt(i + 1) & 64512) === 56320) {
-			++i;
-			len += 4;
-		} else len += 3;
-	}
-	return len;
+var T = typeof setImmediate == "function" ? setImmediate : typeof scheduler == "object" && typeof scheduler.postTask == "function" ? scheduler.postTask.bind(scheduler) : setTimeout;
+function E(e) {
+	for (var t = 0, n = 0, r = 0; r < e.length; ++r) n = e.charCodeAt(r), n < 128 ? t += 1 : n < 2048 ? t += 2 : (n & 64512) == 55296 && (e.charCodeAt(r + 1) & 64512) == 56320 ? (++r, t += 4) : t += 3;
+	return t;
 }
-/** Converts a string to an array of UTF8 bytes. */
-function utf8Array(string) {
-	var offset = 0, c1, c2;
-	var buffer = new Array(utf8Length(string));
-	for (var i = 0, k = string.length; i < k; ++i) {
-		c1 = string.charCodeAt(i);
-		if (c1 < 128) buffer[offset++] = c1;
-		else if (c1 < 2048) {
-			buffer[offset++] = c1 >> 6 | 192;
-			buffer[offset++] = c1 & 63 | 128;
-		} else if ((c1 & 64512) === 55296 && ((c2 = string.charCodeAt(i + 1)) & 64512) === 56320) {
-			c1 = 65536 + ((c1 & 1023) << 10) + (c2 & 1023);
-			++i;
-			buffer[offset++] = c1 >> 18 | 240;
-			buffer[offset++] = c1 >> 12 & 63 | 128;
-			buffer[offset++] = c1 >> 6 & 63 | 128;
-			buffer[offset++] = c1 & 63 | 128;
-		} else {
-			buffer[offset++] = c1 >> 12 | 224;
-			buffer[offset++] = c1 >> 6 & 63 | 128;
-			buffer[offset++] = c1 & 63 | 128;
-		}
-	}
-	return buffer;
+function D(e) {
+	for (var t = 0, n, r, i = Array(E(e)), a = 0, o = e.length; a < o; ++a) n = e.charCodeAt(a), n < 128 ? i[t++] = n : n < 2048 ? (i[t++] = n >> 6 | 192, i[t++] = n & 63 | 128) : (n & 64512) == 55296 && ((r = e.charCodeAt(a + 1)) & 64512) == 56320 ? (n = 65536 + ((n & 1023) << 10) + (r & 1023), ++a, i[t++] = n >> 18 | 240, i[t++] = n >> 12 & 63 | 128, i[t++] = n >> 6 & 63 | 128, i[t++] = n & 63 | 128) : (i[t++] = n >> 12 | 224, i[t++] = n >> 6 & 63 | 128, i[t++] = n & 63 | 128);
+	return i;
 }
-/**
-* bcrypt's own non-standard base64 dictionary.
-* @type {!Array.<string>}
-* @const
-* @inner
-**/
-var BASE64_CODE = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
-/**
-* @type {!Array.<number>}
-* @const
-* @inner
-**/
-var BASE64_INDEX = [
+var O = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split(""), k = [
 	-1,
 	-1,
 	-1,
@@ -456,107 +277,31 @@ var BASE64_INDEX = [
 	-1,
 	-1
 ];
-/**
-* Encodes a byte array to base64 with up to len bytes of input.
-* @param {!Array.<number>} b Byte array
-* @param {number} len Maximum input length
-* @returns {string}
-* @inner
-*/
-function base64_encode(b, len) {
-	var off = 0, rs = [], c1, c2;
-	if (len <= 0 || len > b.length) throw Error("Illegal len: " + len);
-	while (off < len) {
-		c1 = b[off++] & 255;
-		rs.push(BASE64_CODE[c1 >> 2 & 63]);
-		c1 = (c1 & 3) << 4;
-		if (off >= len) {
-			rs.push(BASE64_CODE[c1 & 63]);
+function A(e, t) {
+	var n = 0, r = [], i, a;
+	if (t <= 0 || t > e.length) throw Error("Illegal len: " + t);
+	for (; n < t;) {
+		if (i = e[n++] & 255, r.push(O[i >> 2 & 63]), i = (i & 3) << 4, n >= t) {
+			r.push(O[i & 63]);
 			break;
 		}
-		c2 = b[off++] & 255;
-		c1 |= c2 >> 4 & 15;
-		rs.push(BASE64_CODE[c1 & 63]);
-		c1 = (c2 & 15) << 2;
-		if (off >= len) {
-			rs.push(BASE64_CODE[c1 & 63]);
+		if (a = e[n++] & 255, i |= a >> 4 & 15, r.push(O[i & 63]), i = (a & 15) << 2, n >= t) {
+			r.push(O[i & 63]);
 			break;
 		}
-		c2 = b[off++] & 255;
-		c1 |= c2 >> 6 & 3;
-		rs.push(BASE64_CODE[c1 & 63]);
-		rs.push(BASE64_CODE[c2 & 63]);
+		a = e[n++] & 255, i |= a >> 6 & 3, r.push(O[i & 63]), r.push(O[a & 63]);
 	}
-	return rs.join("");
+	return r.join("");
 }
-/**
-* Decodes a base64 encoded string to up to len bytes of output.
-* @param {string} s String to decode
-* @param {number} len Maximum output length
-* @returns {!Array.<number>}
-* @inner
-*/
-function base64_decode(s, len) {
-	var off = 0, slen = s.length, olen = 0, rs = [], c1, c2, c3, c4, o, code;
-	if (len <= 0) throw Error("Illegal len: " + len);
-	while (off < slen - 1 && olen < len) {
-		code = s.charCodeAt(off++);
-		c1 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
-		code = s.charCodeAt(off++);
-		c2 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
-		if (c1 == -1 || c2 == -1) break;
-		o = c1 << 2 >>> 0;
-		o |= (c2 & 48) >> 4;
-		rs.push(String.fromCharCode(o));
-		if (++olen >= len || off >= slen) break;
-		code = s.charCodeAt(off++);
-		c3 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
-		if (c3 == -1) break;
-		o = (c2 & 15) << 4 >>> 0;
-		o |= (c3 & 60) >> 2;
-		rs.push(String.fromCharCode(o));
-		if (++olen >= len || off >= slen) break;
-		code = s.charCodeAt(off++);
-		c4 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
-		o = (c3 & 3) << 6 >>> 0;
-		o |= c4;
-		rs.push(String.fromCharCode(o));
-		++olen;
-	}
-	var res = [];
-	for (off = 0; off < olen; off++) res.push(rs[off].charCodeAt(0));
-	return res;
+function j(e, t) {
+	var n = 0, r = e.length, i = 0, a = [], o, s, c, l, u, d;
+	if (t <= 0) throw Error("Illegal len: " + t);
+	for (; n < r - 1 && i < t && (d = e.charCodeAt(n++), o = d < k.length ? k[d] : -1, d = e.charCodeAt(n++), s = d < k.length ? k[d] : -1, !(o == -1 || s == -1 || (u = o << 2 >>> 0, u |= (s & 48) >> 4, a.push(String.fromCharCode(u)), ++i >= t || n >= r) || (d = e.charCodeAt(n++), c = d < k.length ? k[d] : -1, c == -1) || (u = (s & 15) << 4 >>> 0, u |= (c & 60) >> 2, a.push(String.fromCharCode(u)), ++i >= t || n >= r)));) d = e.charCodeAt(n++), l = d < k.length ? k[d] : -1, u = (c & 3) << 6 >>> 0, u |= l, a.push(String.fromCharCode(u)), ++i;
+	var f = [];
+	for (n = 0; n < i; n++) f.push(a[n].charCodeAt(0));
+	return f;
 }
-/**
-* @type {number}
-* @const
-* @inner
-*/
-var BCRYPT_SALT_LEN = 16;
-/**
-* @type {number}
-* @const
-* @inner
-*/
-var GENSALT_DEFAULT_LOG2_ROUNDS = 10;
-/**
-* @type {number}
-* @const
-* @inner
-*/
-var BLOWFISH_NUM_ROUNDS = 16;
-/**
-* @type {number}
-* @const
-* @inner
-*/
-var MAX_EXECUTION_TIME = 100;
-/**
-* @type {Array.<number>}
-* @const
-* @inner
-*/
-var P_ORIG = [
+var M = 16, N = 10, de = 16, fe = 100, P = [
 	608135816,
 	2242054355,
 	320440878,
@@ -575,13 +320,7 @@ var P_ORIG = [
 	3041331479,
 	2450970073,
 	2306472731
-];
-/**
-* @type {Array.<number>}
-* @const
-* @inner
-*/
-var S_ORIG = [
+], F = [
 	3509652390,
 	2564797868,
 	805139163,
@@ -1606,13 +1345,7 @@ var S_ORIG = [
 	3463963227,
 	1469046755,
 	985887462
-];
-/**
-* @type {Array.<number>}
-* @const
-* @inner
-*/
-var C_ORIG = [
+], I = [
 	1332899944,
 	1700884034,
 	1701343084,
@@ -1620,608 +1353,293 @@ var C_ORIG = [
 	1668446532,
 	1869963892
 ];
-/**
-* @param {Array.<number>} lr
-* @param {number} off
-* @param {Array.<number>} P
-* @param {Array.<number>} S
-* @returns {Array.<number>}
-* @inner
-*/
-function _encipher(lr, off, P, S) {
-	var n, l = lr[off], r = lr[off + 1];
-	l ^= P[0];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[1];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[2];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[3];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[4];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[5];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[6];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[7];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[8];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[9];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[10];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[11];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[12];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[13];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[14];
-	n = S[l >>> 24];
-	n += S[256 | l >> 16 & 255];
-	n ^= S[512 | l >> 8 & 255];
-	n += S[768 | l & 255];
-	r ^= n ^ P[15];
-	n = S[r >>> 24];
-	n += S[256 | r >> 16 & 255];
-	n ^= S[512 | r >> 8 & 255];
-	n += S[768 | r & 255];
-	l ^= n ^ P[16];
-	lr[off] = r ^ P[BLOWFISH_NUM_ROUNDS + 1];
-	lr[off + 1] = l;
-	return lr;
+function L(e, t, n, r) {
+	var i, a = e[t], o = e[t + 1];
+	return a ^= n[0], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[1], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[2], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[3], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[4], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[5], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[6], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[7], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[8], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[9], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[10], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[11], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[12], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[13], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[14], i = r[a >>> 24], i += r[256 | a >> 16 & 255], i ^= r[512 | a >> 8 & 255], i += r[768 | a & 255], o ^= i ^ n[15], i = r[o >>> 24], i += r[256 | o >> 16 & 255], i ^= r[512 | o >> 8 & 255], i += r[768 | o & 255], a ^= i ^ n[16], e[t] = o ^ n[de + 1], e[t + 1] = a, e;
 }
-/**
-* @param {Array.<number>} data
-* @param {number} offp
-* @returns {{key: number, offp: number}}
-* @inner
-*/
-function _streamtoword(data, offp) {
-	for (var i = 0, word = 0; i < 4; ++i) word = word << 8 | data[offp] & 255, offp = (offp + 1) % data.length;
+function R(e, t) {
+	for (var n = 0, r = 0; n < 4; ++n) r = r << 8 | e[t] & 255, t = (t + 1) % e.length;
 	return {
-		key: word,
-		offp
+		key: r,
+		offp: t
 	};
 }
-/**
-* @param {Array.<number>} key
-* @param {Array.<number>} P
-* @param {Array.<number>} S
-* @inner
-*/
-function _key(key, P, S) {
-	var offset = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
-	for (var i = 0; i < plen; i++) sw = _streamtoword(key, offset), offset = sw.offp, P[i] = P[i] ^ sw.key;
-	for (i = 0; i < plen; i += 2) lr = _encipher(lr, 0, P, S), P[i] = lr[0], P[i + 1] = lr[1];
-	for (i = 0; i < slen; i += 2) lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
+function z(e, t, n) {
+	for (var r = 0, i = [0, 0], a = t.length, o = n.length, s, c = 0; c < a; c++) s = R(e, r), r = s.offp, t[c] = t[c] ^ s.key;
+	for (c = 0; c < a; c += 2) i = L(i, 0, t, n), t[c] = i[0], t[c + 1] = i[1];
+	for (c = 0; c < o; c += 2) i = L(i, 0, t, n), n[c] = i[0], n[c + 1] = i[1];
 }
-/**
-* Expensive key schedule Blowfish.
-* @param {Array.<number>} data
-* @param {Array.<number>} key
-* @param {Array.<number>} P
-* @param {Array.<number>} S
-* @inner
-*/
-function _ekskey(data, key, P, S) {
-	var offp = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
-	for (var i = 0; i < plen; i++) sw = _streamtoword(key, offp), offp = sw.offp, P[i] = P[i] ^ sw.key;
-	offp = 0;
-	for (i = 0; i < plen; i += 2) sw = _streamtoword(data, offp), offp = sw.offp, lr[0] ^= sw.key, sw = _streamtoword(data, offp), offp = sw.offp, lr[1] ^= sw.key, lr = _encipher(lr, 0, P, S), P[i] = lr[0], P[i + 1] = lr[1];
-	for (i = 0; i < slen; i += 2) sw = _streamtoword(data, offp), offp = sw.offp, lr[0] ^= sw.key, sw = _streamtoword(data, offp), offp = sw.offp, lr[1] ^= sw.key, lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
+function B(e, t, n, r) {
+	for (var i = 0, a = [0, 0], o = n.length, s = r.length, c, l = 0; l < o; l++) c = R(t, i), i = c.offp, n[l] = n[l] ^ c.key;
+	for (i = 0, l = 0; l < o; l += 2) c = R(e, i), i = c.offp, a[0] ^= c.key, c = R(e, i), i = c.offp, a[1] ^= c.key, a = L(a, 0, n, r), n[l] = a[0], n[l + 1] = a[1];
+	for (l = 0; l < s; l += 2) c = R(e, i), i = c.offp, a[0] ^= c.key, c = R(e, i), i = c.offp, a[1] ^= c.key, a = L(a, 0, n, r), r[l] = a[0], r[l + 1] = a[1];
 }
-/**
-* Internaly crypts a string.
-* @param {Array.<number>} b Bytes to crypt
-* @param {Array.<number>} salt Salt bytes to use
-* @param {number} rounds Number of rounds
-* @param {function(Error, Array.<number>=)=} callback Callback receiving the error, if any, and the resulting bytes. If
-*  omitted, the operation will be performed synchronously.
-*  @param {function(number)=} progressCallback Callback called with the current progress
-* @returns {!Array.<number>|undefined} Resulting bytes if callback has been omitted, otherwise `undefined`
-* @inner
-*/
-function _crypt(b, salt, rounds, callback, progressCallback) {
-	var cdata = C_ORIG.slice(), clen = cdata.length, err;
-	if (rounds < 4 || rounds > 31) {
-		err = Error("Illegal number of rounds (4-31): " + rounds);
-		if (callback) {
-			nextTick(callback.bind(this, err));
-			return;
-		} else throw err;
-	}
-	if (salt.length !== BCRYPT_SALT_LEN) {
-		err = Error("Illegal salt length: " + salt.length + " != " + BCRYPT_SALT_LEN);
-		if (callback) {
-			nextTick(callback.bind(this, err));
-			return;
-		} else throw err;
-	}
-	rounds = 1 << rounds >>> 0;
-	var P, S, i = 0, j;
-	if (typeof Int32Array === "function") {
-		P = new Int32Array(P_ORIG);
-		S = new Int32Array(S_ORIG);
-	} else {
-		P = P_ORIG.slice();
-		S = S_ORIG.slice();
-	}
-	_ekskey(salt, b, P, S);
-	/**
-	* Calcualtes the next round.
-	* @returns {Array.<number>|undefined} Resulting array if callback has been omitted, otherwise `undefined`
-	* @inner
-	*/
-	function next() {
-		if (progressCallback) progressCallback(i / rounds);
-		if (i < rounds) {
-			var start = Date.now();
-			for (; i < rounds;) {
-				i = i + 1;
-				_key(b, P, S);
-				_key(salt, P, S);
-				if (Date.now() - start > MAX_EXECUTION_TIME) break;
-			}
-		} else {
-			for (i = 0; i < 64; i++) for (j = 0; j < clen >> 1; j++) _encipher(cdata, j << 1, P, S);
-			var ret = [];
-			for (i = 0; i < clen; i++) ret.push((cdata[i] >> 24 & 255) >>> 0), ret.push((cdata[i] >> 16 & 255) >>> 0), ret.push((cdata[i] >> 8 & 255) >>> 0), ret.push((cdata[i] & 255) >>> 0);
-			if (callback) {
-				callback(null, ret);
+function V(e, t, n, r, i) {
+	var a = I.slice(), o = a.length, s;
+	if (n < 4 || n > 31) if (s = Error("Illegal number of rounds (4-31): " + n), r) {
+		T(r.bind(this, s));
+		return;
+	} else throw s;
+	if (t.length !== M) if (s = Error("Illegal salt length: " + t.length + " != " + M), r) {
+		T(r.bind(this, s));
+		return;
+	} else throw s;
+	n = 1 << n >>> 0;
+	var c, l, u = 0, d;
+	typeof Int32Array == "function" ? (c = new Int32Array(P), l = new Int32Array(F)) : (c = P.slice(), l = F.slice()), B(t, e, c, l);
+	function f() {
+		if (i && i(u / n), u < n) for (var s = Date.now(); u < n && (u += 1, z(e, c, l), z(t, c, l), !(Date.now() - s > fe)););
+		else {
+			for (u = 0; u < 64; u++) for (d = 0; d < o >> 1; d++) L(a, d << 1, c, l);
+			var p = [];
+			for (u = 0; u < o; u++) p.push((a[u] >> 24 & 255) >>> 0), p.push((a[u] >> 16 & 255) >>> 0), p.push((a[u] >> 8 & 255) >>> 0), p.push((a[u] & 255) >>> 0);
+			if (r) {
+				r(null, p);
 				return;
-			} else return ret;
+			} else return p;
 		}
-		if (callback) nextTick(next);
+		r && T(f);
 	}
-	if (typeof callback !== "undefined") next();
+	if (r !== void 0) f();
+	else for (var p;;) if ((p = f()) !== void 0) return p || [];
+}
+function H(e, t, n, r) {
+	var i;
+	if (typeof e != "string" || typeof t != "string") if (i = Error("Invalid string / salt: Not a string"), n) {
+		T(n.bind(this, i));
+		return;
+	} else throw i;
+	var a, o;
+	if (t.charAt(0) !== "$" || t.charAt(1) !== "2") if (i = Error("Invalid salt version: " + t.substring(0, 2)), n) {
+		T(n.bind(this, i));
+		return;
+	} else throw i;
+	if (t.charAt(2) === "$") a = "\0", o = 3;
 	else {
-		var res;
-		while (true) if (typeof (res = next()) !== "undefined") return res || [];
-	}
-}
-/**
-* Internally hashes a password.
-* @param {string} password Password to hash
-* @param {?string} salt Salt to use, actually never null
-* @param {function(Error, string=)=} callback Callback receiving the error, if any, and the resulting hash. If omitted,
-*  hashing is performed synchronously.
-*  @param {function(number)=} progressCallback Callback called with the current progress
-* @returns {string|undefined} Resulting hash if callback has been omitted, otherwise `undefined`
-* @inner
-*/
-function _hash(password, salt, callback, progressCallback) {
-	var err;
-	if (typeof password !== "string" || typeof salt !== "string") {
-		err = Error("Invalid string / salt: Not a string");
-		if (callback) {
-			nextTick(callback.bind(this, err));
+		if (a = t.charAt(2), a !== "a" && a !== "b" && a !== "y" || t.charAt(3) !== "$") if (i = Error("Invalid salt revision: " + t.substring(2, 4)), n) {
+			T(n.bind(this, i));
 			return;
-		} else throw err;
+		} else throw i;
+		o = 4;
 	}
-	var minor, offset;
-	if (salt.charAt(0) !== "$" || salt.charAt(1) !== "2") {
-		err = Error("Invalid salt version: " + salt.substring(0, 2));
-		if (callback) {
-			nextTick(callback.bind(this, err));
-			return;
-		} else throw err;
+	if (t.charAt(o + 2) > "$") if (i = Error("Missing salt rounds"), n) {
+		T(n.bind(this, i));
+		return;
+	} else throw i;
+	var s = parseInt(t.substring(o, o + 1), 10) * 10 + parseInt(t.substring(o + 1, o + 2), 10), c = t.substring(o + 3, o + 25);
+	e += a >= "a" ? "\0" : "";
+	var l = D(e), u = j(c, M);
+	function d(e) {
+		var t = [];
+		return t.push("$2"), a >= "a" && t.push(a), t.push("$"), s < 10 && t.push("0"), t.push(s.toString()), t.push("$"), t.push(A(u, u.length)), t.push(A(e, I.length * 4 - 1)), t.join("");
 	}
-	if (salt.charAt(2) === "$") minor = String.fromCharCode(0), offset = 3;
-	else {
-		minor = salt.charAt(2);
-		if (minor !== "a" && minor !== "b" && minor !== "y" || salt.charAt(3) !== "$") {
-			err = Error("Invalid salt revision: " + salt.substring(2, 4));
-			if (callback) {
-				nextTick(callback.bind(this, err));
-				return;
-			} else throw err;
-		}
-		offset = 4;
-	}
-	if (salt.charAt(offset + 2) > "$") {
-		err = Error("Missing salt rounds");
-		if (callback) {
-			nextTick(callback.bind(this, err));
-			return;
-		} else throw err;
-	}
-	var rounds = parseInt(salt.substring(offset, offset + 1), 10) * 10 + parseInt(salt.substring(offset + 1, offset + 2), 10), real_salt = salt.substring(offset + 3, offset + 25);
-	password += minor >= "a" ? "\0" : "";
-	var passwordb = utf8Array(password), saltb = base64_decode(real_salt, BCRYPT_SALT_LEN);
-	/**
-	* Finishes hashing.
-	* @param {Array.<number>} bytes Byte array
-	* @returns {string}
-	* @inner
-	*/
-	function finish(bytes) {
-		var res = [];
-		res.push("$2");
-		if (minor >= "a") res.push(minor);
-		res.push("$");
-		if (rounds < 10) res.push("0");
-		res.push(rounds.toString());
-		res.push("$");
-		res.push(base64_encode(saltb, saltb.length));
-		res.push(base64_encode(bytes, C_ORIG.length * 4 - 1));
-		return res.join("");
-	}
-	if (typeof callback == "undefined") return finish(_crypt(passwordb, saltb, rounds));
-	else _crypt(passwordb, saltb, rounds, function(err, bytes) {
-		if (err) callback(err, null);
-		else callback(null, finish(bytes));
-	}, progressCallback);
+	if (n === void 0) return d(V(l, u, s));
+	V(l, u, s, function(e, t) {
+		e ? n(e, null) : n(null, d(t));
+	}, r);
 }
-/**
-* Encodes a byte array to base64 with up to len bytes of input, using the custom bcrypt alphabet.
-* @function
-* @param {!Array.<number>} bytes Byte array
-* @param {number} length Maximum input length
-* @returns {string}
-*/
-function encodeBase64(bytes, length) {
-	return base64_encode(bytes, length);
+function pe(e, t) {
+	return A(e, t);
 }
-/**
-* Decodes a base64 encoded string to up to len bytes of output, using the custom bcrypt alphabet.
-* @function
-* @param {string} string String to decode
-* @param {number} length Maximum output length
-* @returns {!Array.<number>}
-*/
-function decodeBase64(string, length) {
-	return base64_decode(string, length);
+function me(e, t) {
+	return j(e, t);
 }
-var bcryptjs_default = {
-	setRandomFallback,
-	genSaltSync,
-	genSalt,
-	hashSync,
-	hash,
-	compareSync,
-	compare,
-	getRounds,
-	getSalt,
-	truncates,
-	encodeBase64,
-	decodeBase64
-};
-//#endregion
-//#region electron/mysqlManager.ts
-var __filename$1 = fileURLToPath(import.meta.url);
-var __dirname$1 = path.dirname(__filename$1);
-var mysqlProcess = null;
-var isPackaged = app.isPackaged;
-var mysqlRoot = isPackaged ? path.join(process.resourcesPath, "mysql-portable") : path.join(__dirname$1, "..", "mysql-portable");
-var mysqldPath = path.join(mysqlRoot, "bin", "mysqld.exe");
-var dataDir = path.join(app.getPath("userData"), "mysql-data");
-var dbResourcesDir = isPackaged ? path.join(process.resourcesPath, "db") : path.join(__dirname$1, "..", "db");
-var schemaSqlPath = path.join(dbResourcesDir, "esquema_la_cuchilla_final.sql");
-async function startMySQL() {
-	const isFirstRun = !fs.existsSync(dataDir);
-	if (!fs.existsSync(mysqldPath)) throw new Error(`No se encontró mysqld.exe en: ${mysqldPath}`);
-	if (isFirstRun) {
-		console.log("Primera vez: inicializando base de datos...");
-		fs.mkdirSync(dataDir, { recursive: true });
-		execFileSync(mysqldPath, [`--datadir=${dataDir}`, "--initialize-insecure"]);
-	}
-	console.log("Arrancando MySQL...");
-	mysqlProcess = spawn(mysqldPath, [
-		`--datadir=${dataDir}`,
+var U = {
+	setRandomFallback: ae,
+	genSaltSync: b,
+	genSalt: x,
+	hashSync: S,
+	hash: C,
+	compareSync: oe,
+	compare: se,
+	getRounds: ce,
+	getSalt: le,
+	truncates: ue,
+	encodeBase64: pe,
+	decodeBase64: me
+}, he = a(import.meta.url), W = i.dirname(he), G = null, K = n.isPackaged, ge = K ? i.join(process.resourcesPath, "mysql-portable") : i.join(W, "..", "mysql-portable"), q = i.join(ge, "bin", "mysqld.exe"), J = i.join(n.getPath("userData"), "mysql-data"), _e = K ? i.join(process.resourcesPath, "db") : i.join(W, "..", "db"), Y = i.join(_e, "esquema_la_cuchilla_final.sql");
+async function ve() {
+	let e = !l.existsSync(J);
+	if (!l.existsSync(q)) throw Error(`No se encontró mysqld.exe en: ${q}`);
+	e && (console.log("Primera vez: inicializando base de datos..."), l.mkdirSync(J, { recursive: !0 }), s(q, [`--datadir=${J}`, "--initialize-insecure"])), console.log("Arrancando MySQL..."), G = c(q, [
+		`--datadir=${J}`,
 		"--port=54320",
 		"--bind-address=127.0.0.1"
-	]);
-	mysqlProcess.stdout?.on("data", (d) => console.log(`[mysqld] ${d}`));
-	mysqlProcess.stderr?.on("data", (d) => console.log(`[mysqld] ${d}`));
-	mysqlProcess.on("error", (err) => {
-		console.error("Error al arrancar MySQL:", err);
-	});
-	await waitUntilReady();
-	console.log("MySQL listo.");
-	await ensureSchemaLoaded();
-	await ensureLoteEnteradoColumns();
+	]), G.stdout?.on("data", (e) => console.log(`[mysqld] ${e}`)), G.stderr?.on("data", (e) => console.log(`[mysqld] ${e}`)), G.on("error", (e) => {
+		console.error("Error al arrancar MySQL:", e);
+	}), await Ce(), console.log("MySQL listo."), await X(), await xe();
 }
-/** Convierte el .sql pensado para el cliente `mysql` (con bloques
-*  DELIMITER $$ para procedimientos/triggers) en texto que el driver
-*  puede mandar de un jalón: quita las líneas "DELIMITER ..." y
-*  cambia los "$$" de cierre por ";" — el servidor de MySQL sabe
-*  encontrar el END que le corresponde a cada rutina sin necesidad
-*  de un delimitador especial, eso solo lo necesita el cliente CLI. */
-function toExecutableSql(rawSqlFile) {
-	return rawSqlFile.split("\n").filter((line) => !/^\s*DELIMITER\s+/i.test(line)).join("\n").replace(/\$\$/g, ";");
+function ye(e) {
+	return e.split("\n").filter((e) => !/^\s*DELIMITER\s+/i.test(e)).join("\n").replace(/\$\$/g, ";");
 }
-/** Cuántas tablas define el .sql (cuenta los "CREATE TABLE X (" —
-*  no las vistas, esas no cuentan como "tabla core" para decidir si
-*  el esquema quedó completo). Se calcula del archivo en vez de
-*  hardcodear un número para que nunca se desactualice al agregar
-*  tablas nuevas (ej. Notificacion). */
-function contarTablasEsperadas(rawSqlFile) {
-	const matches = rawSqlFile.match(/^CREATE TABLE\s+\w+/gim);
-	return matches ? matches.length : 0;
+function be(e) {
+	let t = e.match(/^CREATE TABLE\s+\w+/gim);
+	return t ? t.length : 0;
 }
-/** Si `la_cuchilla` está vacía (recién creada por el
-*  CREATE DATABASE IF NOT EXISTS de abajo), carga el esquema
-*  empaquetado automáticamente. Si ya tiene TODAS sus tablas, no
-*  toca nada — así no se pisa nada si la base ya se cargó antes.
-*
-*  Antes esto decidía "ya está instalada" con solo `total > 0`, sin
-*  importar CUÁNTAS tablas hubiera. Eso reventaba feo si la base se
-*  quedaba a medias (ej. mysqld se mató a la fuerza a mitad de la
-*  primera corrida, o el proceso se cerró justo durante el `conn.query`
-*  de más abajo): quedaban 1-2 tablas sueltas, el guardián las veía
-*  como "ya instalada" y se saltaba el resto del esquema para
-*  siempre — y entonces ensureLoteEnteradoColumns (o cualquier otra
-*  cosa que espere una tabla completa) tronaba con
-*  "Table 'la_cuchilla.lote' doesn't exist", con un stack trace que
-*  no explica nada de esto.
-*
-*  Ahora se compara el conteo real contra cuántas tablas define el
-*  .sql: si son menos, la base quedó a medias — no hay nada valioso
-*  que conservar ahí (el propio esquema dice explícitamente que no
-*  está pensado para eso), así que se tira y se recrea sola. */
-async function ensureSchemaLoaded() {
-	const mysql = await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1));
-	if (!fs.existsSync(schemaSqlPath)) throw new Error(`No encontré el esquema para cargarlo: ${schemaSqlPath}`);
-	const rawSql = fs.readFileSync(schemaSqlPath, "utf8");
-	const tablasEsperadas = contarTablasEsperadas(rawSql);
-	const setupConn = await mysql.createConnection({
+async function X() {
+	let e = await import("./promise-BRojEzbR.js").then((e) => /* @__PURE__ */ g(e.default, 1));
+	if (!l.existsSync(Y)) throw Error(`No encontré el esquema para cargarlo: ${Y}`);
+	let t = l.readFileSync(Y, "utf8"), n = be(t), r = await e.createConnection({
 		host: "127.0.0.1",
 		port: 54320,
 		user: "root"
 	});
-	await setupConn.query("CREATE DATABASE IF NOT EXISTS la_cuchilla");
-	await setupConn.end();
-	const probe = await mysql.createConnection({
+	await r.query("CREATE DATABASE IF NOT EXISTS la_cuchilla"), await r.end();
+	let i = await e.createConnection({
 		host: "127.0.0.1",
 		port: 54320,
 		user: "root",
 		database: "la_cuchilla"
-	});
-	const [rows] = await probe.query(`SELECT COUNT(*) AS total FROM information_schema.tables
-         WHERE table_schema = 'la_cuchilla' AND table_type = 'BASE TABLE'`);
-	await probe.end();
-	const tablasActuales = rows[0].total;
-	if (tablasActuales >= tablasEsperadas && tablasActuales > 0) {
-		console.log(`la_cuchilla ya tiene sus ${tablasActuales} tablas, no se recarga el esquema.`);
+	}), [a] = await i.query("SELECT COUNT(*) AS total FROM information_schema.tables\n         WHERE table_schema = 'la_cuchilla' AND table_type = 'BASE TABLE'");
+	await i.end();
+	let o = a[0].total;
+	if (o >= n && o > 0) {
+		console.log(`la_cuchilla ya tiene sus ${o} tablas, no se recarga el esquema.`);
 		return;
 	}
-	if (tablasActuales > 0) {
-		console.warn(`la_cuchilla quedó a medias (${tablasActuales}/${tablasEsperadas} tablas) — probablemente una corrida anterior se interrumpió. Recreando desde cero...`);
-		const dropConn = await mysql.createConnection({
+	if (o > 0) {
+		console.warn(`la_cuchilla quedó a medias (${o}/${n} tablas) — probablemente una corrida anterior se interrumpió. Recreando desde cero...`);
+		let t = await e.createConnection({
 			host: "127.0.0.1",
 			port: 54320,
 			user: "root"
 		});
-		await dropConn.query("DROP DATABASE la_cuchilla");
-		await dropConn.query("CREATE DATABASE la_cuchilla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-		await dropConn.end();
+		await t.query("DROP DATABASE la_cuchilla"), await t.query("CREATE DATABASE la_cuchilla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"), await t.end();
 	}
 	console.log("Cargando esquema_la_cuchilla_final.sql...");
-	const executableSql = toExecutableSql(rawSql);
-	const conn = await mysql.createConnection({
+	let s = ye(t), c = await e.createConnection({
 		host: "127.0.0.1",
 		port: 54320,
 		user: "root",
 		database: "la_cuchilla",
-		multipleStatements: true
+		multipleStatements: !0
 	});
 	try {
-		await conn.query(executableSql);
-		console.log("Esquema cargado correctamente.");
+		await c.query(s), console.log("Esquema cargado correctamente.");
 	} finally {
-		await conn.end();
+		await c.end();
 	}
 }
-/** Migración ligera e idempotente: agrega las columnas `enterado` /
-*  `enterado_por` / `enterado_en` a Lote si todavía no existen. Es
-*  necesaria además de ensureSchemaLoaded() porque esa función SOLO
-*  carga el .sql completo cuando la base está totalmente vacía — si
-*  ya tenías la_cuchilla corriendo de antes (con datos), nunca vuelve
-*  a tocar el esquema y estas columnas nuevas jamás aparecerían solas. */
-async function ensureLoteEnteradoColumns() {
-	const conn = await (await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1))).createConnection({
+async function xe() {
+	let e = await (await import("./promise-BRojEzbR.js").then((e) => /* @__PURE__ */ g(e.default, 1))).createConnection({
 		host: "127.0.0.1",
 		port: 54320,
 		user: "root",
 		database: "la_cuchilla"
 	});
 	try {
-		const [tabla] = await conn.query(`SELECT 1 FROM information_schema.tables
-             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' LIMIT 1`);
-		if (tabla.length === 0) {
+		let [t] = await e.query("SELECT 1 FROM information_schema.tables\n             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' LIMIT 1");
+		if (t.length === 0) {
 			console.warn("ensureLoteEnteradoColumns: la tabla Lote no existe todavía, se omite esta migración (revisa ensureSchemaLoaded).");
 			return;
 		}
-		const [rows] = await conn.query(`SELECT COLUMN_NAME FROM information_schema.columns
-             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' AND COLUMN_NAME = 'enterado'`);
-		if (rows.length > 0) return;
-		console.log("Migrando tabla Lote: agregando columnas enterado/enterado_por/enterado_en...");
-		await conn.query(`ALTER TABLE Lote
-                ADD COLUMN enterado BOOLEAN DEFAULT FALSE,
-                ADD COLUMN enterado_por CHAR(36),
-                ADD COLUMN enterado_en TIMESTAMP NULL,
-                ADD CONSTRAINT fk_lote_enterado_por FOREIGN KEY (enterado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL`);
-		console.log("Migración de Lote completada.");
+		let [n] = await e.query("SELECT COLUMN_NAME FROM information_schema.columns\n             WHERE table_schema = 'la_cuchilla' AND table_name = 'Lote' AND COLUMN_NAME = 'enterado'");
+		if (n.length > 0) return;
+		console.log("Migrando tabla Lote: agregando columnas enterado/enterado_por/enterado_en..."), await e.query("ALTER TABLE Lote\n                ADD COLUMN enterado BOOLEAN DEFAULT FALSE,\n                ADD COLUMN enterado_por CHAR(36),\n                ADD COLUMN enterado_en TIMESTAMP NULL,\n                ADD CONSTRAINT fk_lote_enterado_por FOREIGN KEY (enterado_por) REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL"), console.log("Migración de Lote completada.");
 	} finally {
-		await conn.end();
+		await e.end();
 	}
 }
-function stopMySQL() {
-	if (mysqlProcess) {
-		mysqlProcess.kill();
-		mysqlProcess = null;
-	}
+function Se() {
+	G &&= (G.kill(), null);
 }
-async function waitUntilReady(retries = 30) {
-	const mysql = await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1));
-	for (let i = 0; i < retries; i++) try {
-		await (await mysql.createConnection({
+async function Ce(e = 30) {
+	let t = await import("./promise-BRojEzbR.js").then((e) => /* @__PURE__ */ g(e.default, 1));
+	for (let n = 0; n < e; n++) try {
+		await (await t.createConnection({
 			host: "127.0.0.1",
 			port: 54320,
 			user: "root"
 		})).end();
 		return;
 	} catch {
-		await new Promise((r) => setTimeout(r, 500));
+		await new Promise((e) => setTimeout(e, 500));
 	}
-	throw new Error("MySQL no arrancó a tiempo (timeout).");
+	throw Error("MySQL no arrancó a tiempo (timeout).");
 }
 //#endregion
 //#region electron/main.ts
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = path.dirname(__filename);
-var mainWindow = null;
-var pool = null;
-async function createWindow() {
-	mainWindow = new BrowserWindow({
+var we = a(import.meta.url), Z = i.dirname(we), Q = null, $ = null;
+async function Te() {
+	Q = new t({
 		width: 1200,
 		height: 800,
 		webPreferences: {
-			preload: path.join(__dirname, "preload.mjs"),
-			contextIsolation: true,
-			nodeIntegration: false
+			preload: i.join(Z, "preload.mjs"),
+			contextIsolation: !0,
+			nodeIntegration: !1
 		}
-	});
-	if (app.isPackaged) mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
-	else mainWindow.loadURL("http://localhost:5173");
+	}), n.isPackaged ? Q.loadFile(i.join(Z, "../dist/index.html")) : Q.loadURL("http://localhost:5173");
 }
-app.whenReady().then(async () => {
+n.whenReady().then(async () => {
 	try {
-		await startMySQL();
-		pool = (await import("./promise-BcfCyrwl.js").then((m) => /* @__PURE__ */ __toESM(m.default, 1))).createPool({
+		await ve(), $ = (await import("./promise-BRojEzbR.js").then((e) => /* @__PURE__ */ g(e.default, 1))).createPool({
 			host: "127.0.0.1",
 			port: 54320,
 			user: "root",
 			database: "la_cuchilla"
 		});
-	} catch (err) {
-		console.error("Fallo iniciando MySQL:", err);
+	} catch (e) {
+		console.error("Fallo iniciando MySQL:", e);
 	}
-	createWindow();
-});
-ipcMain.handle("db:query", async (_event, sql, params = []) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const [rows] = await pool.query(sql, params);
-	return rows;
-});
-ipcMain.handle("db:execute", async (_event, sql, params = [], entity) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const [result] = await pool.query(sql, params);
-	if (entity) mainWindow?.webContents.send("db:changed", entity);
-	return result;
-});
-ipcMain.handle("auth:login", async (_event, payload) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const identifier = (payload.identifier ?? "").trim();
-	const password = payload.password ?? "";
-	if (!identifier || !password) throw new Error("Correo/usuario y contraseña son obligatorios.");
-	const CREDENCIALES_INVALIDAS = "Correo/usuario o contraseña incorrectos.";
-	const [credRows] = await pool.query(`SELECT c.password_hash, p.id_perfil_info
-         FROM Credenciales c
-         JOIN Perfil_Info p ON p.id_perfil_info = c.id_perfil_info
-         WHERE c.correo_acceso = ? OR p.usuario = ?
-         LIMIT 1`, [identifier, identifier]);
-	if (credRows.length === 0) throw new Error(CREDENCIALES_INVALIDAS);
-	if (!await bcryptjs_default.compare(password, credRows[0].password_hash)) throw new Error(CREDENCIALES_INVALIDAS);
-	const [rows] = await pool.query("SELECT * FROM v_usuarios WHERE id_perfil_info = ?", [credRows[0].id_perfil_info]);
-	return rows[0];
-});
-ipcMain.handle("users:crear", async (_event, input) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const passwordHash = await bcryptjs_default.hash(input.password, 10);
-	const conn = await pool.getConnection();
+	Te();
+}), r.handle("db:query", async (e, t, n = []) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let [r] = await $.query(t, n);
+	return r;
+}), r.handle("db:execute", async (e, t, n = [], r) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let [i] = await $.query(t, n);
+	return r && Q?.webContents.send("db:changed", r), i;
+}), r.handle("auth:login", async (e, t) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let n = (t.identifier ?? "").trim(), r = t.password ?? "";
+	if (!n || !r) throw Error("Correo/usuario y contraseña son obligatorios.");
+	let [i] = await $.query("SELECT c.password_hash, p.id_perfil_info\n         FROM Credenciales c\n         JOIN Perfil_Info p ON p.id_perfil_info = c.id_perfil_info\n         WHERE c.correo_acceso = ? OR p.usuario = ?\n         LIMIT 1", [n, n]);
+	if (i.length === 0 || !await U.compare(r, i[0].password_hash)) throw Error("Correo/usuario o contraseña incorrectos.");
+	let [a] = await $.query("SELECT * FROM v_usuarios WHERE id_perfil_info = ?", [i[0].id_perfil_info]);
+	return a[0];
+}), r.handle("users:crear", async (e, t) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let n = await U.hash(t.password, 10), r = await $.getConnection();
 	try {
-		await conn.query(`CALL sp_crear_usuario(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @id_perfil_info)`, [
-			input.usuario,
-			input.nombres,
-			input.apellido_paterno,
-			input.apellido_materno,
-			input.rol,
-			input.correo_acceso,
-			passwordHash,
-			input.correo_personal,
-			input.lada,
-			input.telefono,
-			input.direccion
+		await r.query("CALL sp_crear_usuario(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @id_perfil_info)", [
+			t.usuario,
+			t.nombres,
+			t.apellido_paterno,
+			t.apellido_materno,
+			t.rol,
+			t.correo_acceso,
+			n,
+			t.correo_personal,
+			t.lada,
+			t.telefono,
+			t.direccion
 		]);
-		const [[row]] = await conn.query("SELECT @id_perfil_info AS id_perfil_info");
-		mainWindow?.webContents.send("db:changed", "usuarios");
-		return row.id_perfil_info;
+		let [[e]] = await r.query("SELECT @id_perfil_info AS id_perfil_info");
+		return Q?.webContents.send("db:changed", "usuarios"), e.id_perfil_info;
 	} finally {
-		conn.release();
+		r.release();
 	}
-});
-ipcMain.handle("users:asignarCredenciales", async (_event, payload) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const passwordHash = await bcryptjs_default.hash(payload.password, 10);
-	await pool.query("CALL sp_asignar_credenciales(?, ?, ?)", [
-		payload.id_perfil_info,
-		payload.correo_acceso,
-		passwordHash
-	]);
-	mainWindow?.webContents.send("db:changed", "usuarios");
-});
-ipcMain.handle("users:cambiarPassword", async (_event, payload) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	const passwordHash = await bcryptjs_default.hash(payload.password, 10);
-	await pool.query("UPDATE Credenciales SET password_hash = ? WHERE id_perfil_info = ?", [passwordHash, payload.id_perfil_info]);
-	mainWindow?.webContents.send("db:changed", "usuarios");
-});
-ipcMain.handle("users:revocarCredenciales", async (_event, idPerfilInfo) => {
-	if (!pool) throw new Error("La base de datos no está lista todavía");
-	await pool.query("CALL sp_revocar_credenciales(?)", [idPerfilInfo]);
-	mainWindow?.webContents.send("db:changed", "usuarios");
-});
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") app.quit();
-});
-app.on("before-quit", () => {
-	stopMySQL();
+}), r.handle("users:asignarCredenciales", async (e, t) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let n = await U.hash(t.password, 10);
+	await $.query("CALL sp_asignar_credenciales(?, ?, ?)", [
+		t.id_perfil_info,
+		t.correo_acceso,
+		n
+	]), Q?.webContents.send("db:changed", "usuarios");
+}), r.handle("users:cambiarPassword", async (e, t) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	let n = await U.hash(t.password, 10);
+	await $.query("UPDATE Credenciales SET password_hash = ? WHERE id_perfil_info = ?", [n, t.id_perfil_info]), Q?.webContents.send("db:changed", "usuarios");
+}), r.handle("users:revocarCredenciales", async (e, t) => {
+	if (!$) throw Error("La base de datos no está lista todavía");
+	await $.query("CALL sp_revocar_credenciales(?)", [t]), Q?.webContents.send("db:changed", "usuarios");
+}), n.on("window-all-closed", () => {
+	process.platform !== "darwin" && n.quit();
+}), n.on("before-quit", () => {
+	Se();
 });
 //#endregion
-export { __toCommonJS as a, __require as i, __esmMin as n, __exportAll as r, __commonJSMin as t };
+export { _ as a, v as i, te as n, re as r, ne as t };

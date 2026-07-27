@@ -4,9 +4,15 @@ import FormSelect from '../../components/FormSelect';
 import { UserPlus, ArrowLeft, AlertCircle } from 'lucide-react';
 // Modals removidos a favor de Toast
 import { usuarioDisponible, correoAccesoDisponible, crearUsuario } from '../../../src/services/user.service.ts';
+import { useAuth } from '../../../src/context/AuthContext';
+import { esDev } from '../../../src/utils/permisos';
 import '../../css/newusers.css';
 
-export default function NuevoUsuario({ onBack, showToast, showError }: { onBack?: () => void; showToast?: (type: 'success'|'error', msg: string) => void; showError?: (title: string, msg: string) => void }) {
+export default function NuevoUsuario({ onBack, showToast, showError }: { onBack?: () => void; showToast?: (type: 'success' | 'error', msg: string) => void; showError?: (title: string, msg: string) => void }) {
+    const { usuario: miUsuario } = useAuth();
+    // Solo un Dev puede dar de alta a otro Dev — para cualquier otro
+    // rol la opción ni siquiera aparece en el selector.
+    const soyDev = esDev(miUsuario?.rol);
     const [enviando, setEnviando] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -144,6 +150,14 @@ export default function NuevoUsuario({ onBack, showToast, showError }: { onBack?
                 return;
             }
 
+            // Resguardo: el selector ya oculta "Dev" para quien no es Dev,
+            // pero se valida también aquí por si formData.rol llegó a
+            // 'Dev' por cualquier otro camino.
+            if (formData.rol === 'Dev' && !soyDev) {
+                showError?.('Sin permiso', 'Solo un usuario Dev puede crear otro usuario Dev.');
+                return;
+            }
+
             // Límite de contraseña: mínimo 8 caracteres, sin exigir
             // combinación específica (letras, números y/o especiales
             // valen igual, lo único que importa es la longitud).
@@ -272,7 +286,7 @@ export default function NuevoUsuario({ onBack, showToast, showError }: { onBack?
                                 onChange={handleChange('rol')}
                                 id="nu-rol"
                                 options={[
-                                    { value: 'Dev', label: 'Dev — Acceso total al sistema' },
+                                    ...(soyDev ? [{ value: 'Dev', label: 'Dev — Acceso total al sistema' }] : []),
                                     { value: 'administrador', label: 'Administrador — Acceso total (CRUD)' },
                                     { value: 'cajero', label: 'Cajero — Punto de venta' },
                                     { value: 'contador', label: 'Contador — Reportes y finanzas' },

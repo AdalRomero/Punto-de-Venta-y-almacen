@@ -463,6 +463,61 @@ CREATE TABLE Devolucion (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+-- FIADOS (cuentas por cobrar informales)
+-- Pantalla: Fiados (fiados.tsx / fiados.service.ts). Deliberadamente
+-- independiente de Venta/Producto/Cliente, mismo espíritu que
+-- Devolucion arriba: en este negocio "fiar" es un apunte propio del
+-- dueño/cajero, no una venta formal ni un cliente dado de alta en
+-- ningún catálogo (no existe tabla Cliente). Por eso nombre/teléfono/
+-- características son texto libre para RECONOCER a la persona, y
+-- articulos también es texto libre (no se liga a Producto ni se
+-- descuenta de Inventario). Se puede abonar de a poco (Fiado_Abono)
+-- hasta saldar el total; el recordatorio de un fiado pendiente sale
+-- por la Notificacion de arriba (fiados.service.ts llama a
+-- crearNotificacion), no por un mecanismo aparte.
+-- ============================================================
+CREATE TABLE Fiado (
+  id_fiado         CHAR(36)      PRIMARY KEY DEFAULT (UUID()),
+  nombre           VARCHAR(120)  NOT NULL,              -- nombre o apodo
+  telefono         VARCHAR(20),                         -- opcional
+  caracteristicas  VARCHAR(255),                        -- señas para reconocerlo
+  articulos        VARCHAR(500)  NOT NULL,              -- qué se llevó (texto libre)
+  monto_total      DECIMAL(10,2) NOT NULL,
+  saldo_pendiente  DECIMAL(10,2) NOT NULL,
+  estado           ENUM('pendiente','pagado') NOT NULL DEFAULT 'pendiente',
+  registrado_por   CHAR(36),
+  created          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  pagado_en        TIMESTAMP NULL,                      -- se llena solo cuando saldo_pendiente llega a 0
+  CONSTRAINT fk_fiado_perfil FOREIGN KEY (registrado_por)
+    REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL,
+  CONSTRAINT chk_fiado_monto CHECK (monto_total > 0),
+  CONSTRAINT chk_fiado_saldo CHECK (saldo_pendiente >= 0)
+) ENGINE=InnoDB;
+
+-- Historial de abonos (pagos parciales) de cada fiado. 0..N filas
+-- por Fiado; fiados.service.ts suma cada abono al insertar y
+-- recalcula Fiado.saldo_pendiente/estado en la misma transacción.
+CREATE TABLE Fiado_Abono (
+  id_abono        CHAR(36)      PRIMARY KEY DEFAULT (UUID()),
+  id_fiado        CHAR(36)      NOT NULL,
+  monto           DECIMAL(10,2) NOT NULL,
+  registrado_por  CHAR(36),
+  created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_abono_fiado FOREIGN KEY (id_fiado)
+    REFERENCES Fiado(id_fiado) ON DELETE CASCADE,
+  CONSTRAINT fk_abono_perfil FOREIGN KEY (registrado_por)
+    REFERENCES Perfil_Info(id_perfil_info) ON DELETE SET NULL,
+  CONSTRAINT chk_abono_monto CHECK (monto > 0)
+) ENGINE=InnoDB;
+
+-- La pantalla de Fiados siempre ordena pendientes primero y por
+-- antigüedad (mismo criterio (estado = 'pagado') que ya usa
+-- v_avisos_stock más abajo con `(a.nivel = 'rojo')`); el historial de
+-- abonos siempre se consulta por id_fiado.
+CREATE INDEX idx_fiado_estado ON Fiado(estado, created ASC);
+CREATE INDEX idx_abono_fiado  ON Fiado_Abono(id_fiado);
+
+-- ============================================================
 -- AVISOS (Alertas de Inventario / Estantería)
 -- Modal Agregar/Editar Producto -> .aip-* / widget "Alertas de
 -- Inventario". Un renglón "vivo" por producto + tipo de aviso

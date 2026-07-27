@@ -4,12 +4,15 @@ import Sidebar from '../components/Sidebar';
 import Home from '../layout/home/home';
 import Inventory from './inventory/Inventory';
 import Ventas from './inventory/ventas';
+import Fiados from './inventory/fiado';
 import Users from './users/users';
 import Catalogo from './catalogo/catalago';
 import { useAuth } from '../../src/context/AuthContext';
 import type { Usuario } from '../../src/services/user.service';
+import { puedeVerPagina } from '../../src/utils/permisos';
 import DevDatabase from './dev/Devdatabase';
 import NotificationsCard from '../components/NotificationsCard';
+import Reportes from './reports/reportes';
 
 /* ─── Helpers de presentación ────────────────── */
 
@@ -40,7 +43,7 @@ function rolLegible(rol: string | undefined): string {
 }
 
 /* ─── User Profile Dropdown ──────────────────── */
-function UserMenu({ onNavigateSettings }: { onNavigateSettings?: () => void }) {
+function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { usuario, cerrarSesion } = useAuth();
@@ -112,14 +115,6 @@ function UserMenu({ onNavigateSettings }: { onNavigateSettings?: () => void }) {
               </svg>
               Mi Perfil
             </button>
-            <button className="user-menu__item" role="menuitem" onClick={() => { setOpen(false); onNavigateSettings?.(); }}>
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Configuración
-            </button>
 
             <div className="user-menu__divider" />
 
@@ -143,8 +138,10 @@ const pages: Record<string, React.ReactNode> = {
   inventory: <Inventory />,
   sales: <Ventas />,
   catalogos: <Catalogo />,
-  reports: <Placeholder title="Reportes" />,
+  reports: <Reportes />,
   users: <Users />,
+  fiados: <Fiados />,
+
   dev: <DevDatabase />,
 };
 
@@ -162,9 +159,38 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
+/** Se muestra si alguien llega a un pageId que su rol no puede ver
+ *  (no debería pasar desde el sidebar, que ya oculta esos íconos —
+ *  esto es la segunda línea de defensa por si activePage se mueve
+ *  desde otro lado, ej. NotificationsCard.onNavigate). */
+function AccesoRestringido() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
+      <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--cuh-danger-light, #fee2e2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="30" height="30" fill="none" viewBox="0 0 24 24" stroke="var(--cuh-danger, #dc2626)">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--cuh-text-dark)', margin: 0 }}>Acceso restringido</h2>
+      <p style={{ color: 'var(--cuh-text-muted)', margin: 0, fontSize: 14 }}>Tu rol no tiene permiso para ver esta sección.</p>
+    </div>
+  );
+}
+
 /* ─── AppLayout ──────────────────────────────── */
 export default function AppLayout() {
   const [activePage, setActivePage] = useState('home');
+  const { usuario } = useAuth();
+
+  // Si el rol cambia (otra sesión) o llegan a activePage por una vía
+  // que no pasó por el sidebar (ej. NotificationsCard.onNavigate) y
+  // ese rol ya no puede ver esa página, regresa sola a "home" en vez
+  // de dejar a alguien parado en una sección que no le corresponde.
+  useEffect(() => {
+    if (usuario && !puedeVerPagina(usuario.rol, activePage)) {
+      setActivePage('home');
+    }
+  }, [usuario, activePage]);
 
   const pageTitles: Record<string, string> = {
     home: 'Inicio',
@@ -173,6 +199,8 @@ export default function AppLayout() {
     reports: 'Reportes',
     catalogos: 'Catalogos',
     users: 'Gestión de usuarios',
+    fiados: 'Fiados',
+
     dev: 'DEV',
   };
 
@@ -218,7 +246,9 @@ export default function AppLayout() {
 
         {/* Page content */}
         <main className="app-content">
-          {pages[activePage] ?? <Placeholder title={pageTitles[activePage] ?? activePage} />}
+          {usuario && !puedeVerPagina(usuario.rol, activePage)
+            ? <AccesoRestringido />
+            : (pages[activePage] ?? <Placeholder title={pageTitles[activePage] ?? activePage} />)}
         </main>
       </div>
     </div>

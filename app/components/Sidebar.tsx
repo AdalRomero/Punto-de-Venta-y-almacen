@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import '../css/sidebar.css';
+import { useAuth } from '../../src/context/AuthContext';
+import { puedeVerPagina } from '../../src/utils/permisos';
 
 /* ─── Nav items definition ──────────────────────── */
 interface NavItem {
@@ -45,6 +47,7 @@ const navItems: NavItem[] = [
     label: 'Venta',
     shortLabel: 'Venta',
     groupEnd: true,
+
     icon: (
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -52,6 +55,7 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+
   // ── Análisis ──────────────────────────────
   {
     id: 'catalogos',
@@ -90,6 +94,17 @@ const navItems: NavItem[] = [
   },
   // ── DEV ───────────────────────────────────
   {
+    id: 'fiados',
+    label: 'Fiados',
+    shortLabel: 'Fiados',
+    icon: (
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 8c-1.657 0-3 .672-3 1.5S10.343 11 12 11s3 .672 3 1.5-1.343 1.5-3 1.5m0-6V6m0 1c1.11 0 2.08.402 2.599 1M12 15v1.5m0-1.5c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
     id: 'dev',
     label: 'DEV',
     shortLabel: 'Dev',
@@ -104,6 +119,13 @@ const navItems: NavItem[] = [
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { usuario } = useAuth();
+
+  // Oculta del menú cualquier página que el rol logueado no pueda ver
+  // (incluye "dev": solo aparece si usuario.rol === 'Dev') — mismas
+  // reglas que ya aplica AppLayout al renderizar el contenido, así el
+  // ícono ni siquiera se ofrece si de todos modos no se puede entrar.
+  const itemsVisibles = navItems.filter((item) => puedeVerPagina(usuario?.rol, item.id));
 
   return (
     <>
@@ -141,7 +163,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         <div className="sidebar__divider" />
         {/* ── Navigation ────────────────────────── */}
         <nav className="sidebar__nav" aria-label="Menú principal">
-          {navItems.map((item) => (
+          {itemsVisibles.map((item) => (
             <React.Fragment key={item.id}>
               <button
                 id={`nav-${item.id}`}

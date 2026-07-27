@@ -9,6 +9,7 @@ import AddProducto from '../../components/add/addproducto';
 import AddEntrada from '../../components/add/addentrada';
 import Devoluciones, { type DevolucionPayload } from '../../components/add/devoluciones';
 import Toast, { useToast } from '../../components/Toast ';
+import { useAuth } from '../../../src/context/AuthContext';
 
 import {
   listarProductosInventario,
@@ -21,6 +22,12 @@ import {
 import { listarFamilias } from '../../../src/services/catalogos.service';
 import { registrarDevolucion } from '../../../src/services/devoluciones.service';
 import { listarActividadReciente, obtenerEstadisticasInicio, type ActividadRow, type EstadisticasInicio } from '../../../src/services/ventas.service';
+import { 
+    rangoPreset, 
+    obtenerEstadisticas, 
+    listarHistorialVentas, 
+    descargarCSV 
+} from '../../../src/services/reportes.service';
 
 function buildAreaChart(
   data: { h: string; v: number }[],
@@ -54,6 +61,18 @@ function getGreeting() {
   if (h < 12) return 'Buenos días';
   if (h < 19) return 'Buenas tardes';
   return 'Buenas noches';
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  Dev: 'Desarrollador',
+  administrador: 'Administrador',
+  cajero: 'Cajero',
+  contador: 'Contador',
+};
+
+function rolLegible(rol: string | undefined): string {
+  if (!rol) return 'Usuario';
+  return ROLE_LABELS[rol] ?? rol;
 }
 
 function getFormattedDate() {
@@ -128,6 +147,7 @@ export default function Home() {
   const greeting = getGreeting();
   const dateStr = getFormattedDate();
   const { toast, showToast } = useToast();
+  const { usuario } = useAuth();
 
   /* ─── State for Modals & Data ────────────────────── */
   const [productosInventario, setProductosInventario] = useState<ProductoListado[]>([]);
@@ -141,6 +161,7 @@ export default function Home() {
   const [isAddProductoOpen, setIsAddProductoOpen] = useState(false);
   const [isAddEntradaOpen, setIsAddEntradaOpen] = useState(false);
   const [isDevolucionesOpen, setIsDevolucionesOpen] = useState(false);
+  const [descargandoReporte, setDescargandoReporte] = useState(false);
 
   /* ─── Fetch Data ─────────────────────────────────── */
   const cargarDatos = useCallback(async () => {
@@ -210,6 +231,63 @@ export default function Home() {
           showToast("success", "Devolución registrada exitosamente.");
       } catch (err) {
           showToast("error", err instanceof Error ? err.message : "No se pudo registrar la devolución.");
+      }
+  };
+
+  const handleGenerarReporteDia = async () => {
+      try {
+          setDescargandoReporte(true);
+          const rango = rangoPreset("hoy");
+          const stats = await obtenerEstadisticas(rango);
+          const historial = await listarHistorialVentas(rango, "", 100000);
+          
+          const filasEstadisticas = [
+              ["Rango", `${rango.desde} a ${rango.hasta}`],
+              ["Número de ventas", stats.numeroVentas],
+              ["Unidades vendidas", stats.unidadesVendidas],
+              ["Subtotal", stats.subtotalTotal.toFixed(2)],
+              ["Impuestos cobrados", stats.impuestosTotal.toFixed(2)],
+              ["Total vendido", stats.totalVendido.toFixed(2)],
+              ["Ganancia bruta", stats.gananciaBruta.toFixed(2)],
+              ["Ticket promedio", stats.ticketPromedio.toFixed(2)],
+          ];
+
+          const ENCABEZADOS_HISTORIAL = ["Folio", "Fecha", "Vendedor", "Piezas", "Subtotal", "Impuestos", "Total", "Ganancia"];
+          
+          const fmtFechaHora = (iso: string) =>
+              new Date(iso).toLocaleString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+          const filasHistorialCSV = historial.map((v) => [
+              v.numero_venta,
+              fmtFechaHora(v.fecha),
+              v.registrado_por_nombre ?? "—",
+              v.unidades,
+              v.subtotal.toFixed(2),
+              v.impuestos.toFixed(2),
+              v.total.toFixed(2),
+              v.ganancia.toFixed(2),
+          ]);
+
+          const filas: (string | number)[][] = [
+              ["REPORTE DE VENTAS DEL DÍA — LA CUCHILLA"],
+              ["Periodo", `${rango.desde} a ${rango.hasta}`],
+              ["Generado", new Date().toLocaleString("es-MX")],
+              [],
+              ["1. RESUMEN DEL DÍA"],
+              ["Métrica", "Valor"],
+              ...filasEstadisticas,
+              [],
+              [`2. HISTORIAL DE VENTAS (${historial.length})`],
+              ENCABEZADOS_HISTORIAL,
+              ...filasHistorialCSV,
+          ];
+          
+          descargarCSV(`reporte_dia_${rango.desde}`, [], filas);
+          showToast("success", "Reporte del día descargado.");
+      } catch (err: any) {
+          showToast("error", err?.message ?? "No se pudo generar el reporte del día.");
+      } finally {
+          setDescargandoReporte(false);
       }
   };
 
@@ -288,7 +366,7 @@ export default function Home() {
     {
       id: 'generate-report',
       label: 'Generar Reporte',
-      desc: 'Exportar resumen del día',
+      desc: descargandoReporte ? 'Generando...' : 'Exportar resumen del día',
       variant: 'warning',
       icon: (
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -296,7 +374,7 @@ export default function Home() {
             d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
-      action: () => {} // Inactive for now
+      action: handleGenerarReporteDia
     },
   ];
 
@@ -306,7 +384,7 @@ export default function Home() {
       {/* ── Greeting ─────────────────────────────── */}
       <div className="home-greeting">
         <div>
-          <h2 className="home-greeting__title">{greeting}, Administrador 👋</h2>
+          <h2 className="home-greeting__title">{greeting}, {rolLegible(usuario?.rol)} 👋</h2>
           <p className="home-greeting__sub">Aquí está el resumen de tu tienda hoy.</p>
         </div>
         <span className="home-greeting__date">{dateStr}</span>
@@ -454,7 +532,8 @@ export default function Home() {
                 key={action.id} 
                 className={`home-quick-btn home-quick-btn--${action.variant}`} 
                 onClick={action.action}
-                style={{ opacity: action.id === 'generate-report' ? 0.6 : 1, cursor: action.id === 'generate-report' ? 'not-allowed' : 'pointer' }}
+                style={{ opacity: action.id === 'generate-report' && descargandoReporte ? 0.6 : 1, cursor: action.id === 'generate-report' && descargandoReporte ? 'wait' : 'pointer' }}
+                disabled={action.id === 'generate-report' && descargandoReporte}
               >
                 <div className="home-quick-btn__icon">{action.icon}</div>
                 <div className="home-quick-btn__label">{action.label}</div>

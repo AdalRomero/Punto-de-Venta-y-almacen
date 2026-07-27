@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 interface FormSelectProps {
     label?: string;
     required?: boolean;
+    disabled?: boolean;
     value?: string;
     onChange?: (value: string) => void;
     options: { value: string; label: string }[];
@@ -22,6 +23,7 @@ interface FormSelectProps {
 export default function FormSelect({
     label,
     required = false,
+    disabled = false,
     value = '',
     onChange,
     options,
@@ -42,6 +44,7 @@ export default function FormSelect({
             id={id}
             className={className}
             value={value}
+            disabled={disabled}
             onChange={(e) => onChange?.(e.target.value)}
         >
             {!hasEmptyOption && (

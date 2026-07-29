@@ -6,6 +6,7 @@ import WarningModal from "../../components/modals/WarningModal";
 import Toast, { useToast } from "../../components/Toast .tsx";
 import Pagination, { PAGE_SIZE } from "../../components/pagination";
 import Devoluciones, { type DevolucionPayload } from "../../components/add/devoluciones";
+import CantidadKilosModal from "../../components/CantidadKilosModal.tsx";
 import type { ProductoRow } from "../../components/add/addproducto";
 import {
     Search,
@@ -45,6 +46,7 @@ interface ProductoVenta {
     precio: number;
     stock: number;
     alertLevelStock: 'green' | 'yellow' | 'red' | 'black' | 'none';
+    unidad: 'piezas' | 'kilos';
 }
 
 interface CartItem {
@@ -105,6 +107,7 @@ export default function Ventas() {
                         precio: r.costo_final ?? 0,
                         stock: r.cantidad_total,
                         alertLevelStock: r.alertLevelStock,
+                        unidad: r.unidad,
                     }))
             );
         } catch (err: any) {
@@ -168,6 +171,37 @@ export default function Ventas() {
         });
     };
 
+    // Productos por kilo NO se agregan directo con addToCart (no tiene
+    // caso sumar "1 pieza" cuando lo normal es medio kilo, 300g...):
+    // se abre el modal para capturar el peso exacto. El clic en la
+    // tarjeta del catálogo pasa por aquí en vez de ir directo a
+    // addToCart; abrirKilosModal también se reusa para EDITAR una
+    // línea ya en el carrito (botón de cantidad en pos-cart-item).
+    const [kilosModal, setKilosModal] = useState<{ producto: ProductoVenta; cantidadInicial?: number } | null>(null);
+
+    const handleProductoClick = (producto: ProductoVenta) => {
+        if (producto.stock <= 0) return;
+        if (producto.unidad === 'kilos') {
+            setKilosModal({ producto });
+            return;
+        }
+        addToCart(producto);
+    };
+
+    const handleConfirmarKilos = (cantidad: number) => {
+        if (!kilosModal) return;
+        const { producto } = kilosModal;
+        setCodigoAlternoDuplicado(null);
+        setCart((prev) => {
+            const existing = prev.find((i) => i.producto.id === producto.id);
+            if (existing) {
+                return prev.map((i) => (i.producto.id === producto.id ? { ...i, cantidad } : i));
+            }
+            return [...prev, { producto, cantidad }];
+        });
+        setKilosModal(null);
+    };
+
     /* ── Escaneo por código alterno (pistola de código de barras) ──
        El lector "escribe" el código y termina con Enter, por eso se
        dispara desde el onKeyDown del buscador. Si el código coincide
@@ -185,7 +219,7 @@ export default function Ventas() {
         );
 
         if (coincidencias.length === 1) {
-            addToCart(coincidencias[0]);
+            handleProductoClick(coincidencias[0]);
             setSearchTerm("");
             setFilterFamilia(null);
             return;
@@ -411,7 +445,7 @@ export default function Ventas() {
                                     const isOut = p.stock <= 0 || p.alertLevelStock === 'black';
                                     const isDanger = p.alertLevelStock === 'red';
                                     const isWarning = p.alertLevelStock === 'yellow';
-                                    
+
                                     let toneClass = "";
                                     if (isDanger) toneClass = " tone-low";
                                     else if (isWarning) toneClass = " tone-warning";
@@ -421,9 +455,9 @@ export default function Ventas() {
                                             key={p.id}
                                             type="button"
                                             className={`pos-product-card${isOut ? " is-out" : ""}`}
-                                            onClick={() => addToCart(p)}
+                                            onClick={() => handleProductoClick(p)}
                                             disabled={isOut}
-                                            title={isOut ? "Sin existencia" : "Agregar a la venta"}
+                                            title={isOut ? "Sin existencia" : p.unidad === "kilos" ? "Elegir cantidad" : "Agregar a la venta"}
                                         >
                                             <span className="pos-product-add-badge">
                                                 <Plus size={14} />
@@ -431,7 +465,9 @@ export default function Ventas() {
                                             <span className="pos-product-familia-badge">{p.familia}</span>
                                             <span className="pos-product-name">{p.nombre}</span>
                                             <div className="pos-product-footer">
-                                                <span className="pos-product-price">{formatMoney(p.precio)}</span>
+                                                <span className="pos-product-price">
+                                                    {formatMoney(p.precio)}{p.unidad === "kilos" ? " / kg" : ""}
+                                                </span>
                                                 <span className={`pos-product-stock${toneClass}`}>
                                                     <span className="pos-product-stock-dot" />
                                                     {isOut ? "Agotado" : `${p.stock} disp.`}
@@ -478,26 +514,37 @@ export default function Ventas() {
                                         <div className="pos-cart-item-info">
                                             <div className="pos-cart-item-name">{item.producto.nombre}</div>
                                             <div className="pos-cart-item-price">
-                                                {formatMoney(item.producto.precio)} c/u
+                                                {formatMoney(item.producto.precio)} {item.producto.unidad === "kilos" ? "/ kg" : "c/u"}
                                             </div>
                                         </div>
 
-                                        <div className="pos-cart-item-qty">
+                                        {item.producto.unidad === "kilos" ? (
                                             <button
                                                 className="pos-qty-btn"
-                                                onClick={() => changeQty(item.producto.id, -1)}
+                                                style={{ width: "auto", padding: "0 10px", fontSize: 12, fontWeight: 700 }}
+                                                onClick={() => setKilosModal({ producto: item.producto, cantidadInicial: item.cantidad })}
+                                                title="Editar cantidad"
                                             >
-                                                <Minus size={12} />
+                                                {item.cantidad} kg
                                             </button>
-                                            <span className="pos-qty-value">{item.cantidad}</span>
-                                            <button
-                                                className="pos-qty-btn"
-                                                onClick={() => changeQty(item.producto.id, 1)}
-                                                disabled={item.cantidad >= item.producto.stock}
-                                            >
-                                                <Plus size={12} />
-                                            </button>
-                                        </div>
+                                        ) : (
+                                            <div className="pos-cart-item-qty">
+                                                <button
+                                                    className="pos-qty-btn"
+                                                    onClick={() => changeQty(item.producto.id, -1)}
+                                                >
+                                                    <Minus size={12} />
+                                                </button>
+                                                <span className="pos-qty-value">{item.cantidad}</span>
+                                                <button
+                                                    className="pos-qty-btn"
+                                                    onClick={() => changeQty(item.producto.id, 1)}
+                                                    disabled={item.cantidad >= item.producto.stock}
+                                                >
+                                                    <Plus size={12} />
+                                                </button>
+                                            </div>
+                                        )}
 
                                         <span className="pos-cart-item-subtotal">
                                             {formatMoney(item.cantidad * item.producto.precio)}
@@ -682,6 +729,16 @@ export default function Ventas() {
                 onClose={() => setDevolucionesAbierto(false)}
                 productos={productosDevolucion}
                 onSave={handleGuardarDevolucion}
+            />
+
+            <CantidadKilosModal
+                isOpen={kilosModal !== null}
+                onClose={() => setKilosModal(null)}
+                onConfirm={handleConfirmarKilos}
+                nombreProducto={kilosModal?.producto.nombre ?? ""}
+                precioUnitario={kilosModal?.producto.precio ?? 0}
+                stockDisponible={kilosModal?.producto.stock ?? 0}
+                cantidadInicial={kilosModal?.cantidadInicial}
             />
 
             <ErrorModal

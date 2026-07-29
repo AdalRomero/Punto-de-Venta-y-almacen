@@ -1,7 +1,8 @@
 {
   "name": "cuchilla",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.5",
+  "description": "Sistema de punto de venta e inventario para La Cuchilla",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -38,5 +39,38 @@
     "vite": "^8.0.12",
     "vite-plugin-electron": "^1.1.0",
     "vite-plugin-electron-renderer": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.lacuchilla.app",
+    "productName": "La Cuchilla",
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "extraResources": [
+      {
+        "from": "mysql-portable",
+        "to": "mysql-portable"
+      },
+      {
+        "from": "db",
+        "to": "db"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/logo.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
   }
 }

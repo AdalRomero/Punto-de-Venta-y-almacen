@@ -1559,11 +1559,12 @@ async function Ce(e = 30) {
 }
 //#endregion
 //#region electron/main.ts
-var we = a(import.meta.url), Z = i.dirname(we), Q = null, $ = null;
-async function Te() {
+var we = a(import.meta.url), Z = i.dirname(we), Q = null, $ = null, Te = n.isPackaged ? i.join(process.resourcesPath, "assets", "logo.ico") : i.join(Z, "..", "assets", "logo.ico");
+async function Ee() {
 	Q = new t({
 		width: 1200,
 		height: 800,
+		icon: Te,
 		webPreferences: {
 			preload: i.join(Z, "preload.mjs"),
 			contextIsolation: !0,
@@ -1582,7 +1583,7 @@ n.whenReady().then(async () => {
 	} catch (e) {
 		console.error("Fallo iniciando MySQL:", e);
 	}
-	Te();
+	Ee();
 }), r.handle("db:query", async (e, t, n = []) => {
 	if (!$) throw Error("La base de datos no está lista todavía");
 	let [r] = await $.query(t, n);

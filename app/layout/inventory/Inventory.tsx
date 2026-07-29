@@ -355,6 +355,7 @@ function ProductRow({
                                 <input
                                     type="number"
                                     min={0}
+                                    step={producto.unidad === "kilos" ? 0.01 : 1}
                                     max={producto.cantidad_total}
                                     value={restockAmount}
                                     onChange={(e) => setRestockAmount(e.target.value)}
@@ -773,6 +774,7 @@ function LotesView({
                                                             <input
                                                                 type="number"
                                                                 min={0}
+                                                                step={lote.unidad === "kilos" ? 0.01 : 1}
                                                                 value={draft.cantidad_disponible}
                                                                 onChange={(e) =>
                                                                     setDraft((d) => ({ ...d, cantidad_disponible: e.target.value }))
@@ -1856,4 +1858,4 @@ export default function Inventory() {
             <Toast toast={toast} />
         </div>
     );
-}   
+}

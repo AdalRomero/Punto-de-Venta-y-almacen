@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import '../css/sidebar.css';
 import { useAuth } from '../../src/context/AuthContext';
 import { puedeVerPagina } from '../../src/utils/permisos';
+import logo from '../../assets/logo.png';
 
 /* ─── Nav items definition ──────────────────────── */
 interface NavItem {
@@ -156,7 +157,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         {/* ── Brand mark ───────────────────────── */}
         <div className="sidebar__brand">
           <div className="sidebar__brand-mark">
-            <img src="/assets/logo.png" alt="LC" />
+            <img src={logo} alt="LC" />
           </div>
         </div>
         {/* ── Divider ───────────────────────── */}

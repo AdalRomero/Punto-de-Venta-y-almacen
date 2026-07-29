@@ -11,10 +11,19 @@ const __dirname = path.dirname(__filename);
 let mainWindow: BrowserWindow | null = null;
 let pool: any = null;
 
+// Mismo criterio que mysqlManager.ts para resolver rutas: en dev,
+// relativo al proyecto (dist-electron/../assets); ya empaquetado,
+// desde process.resourcesPath (requiere declarar "assets" como
+// extraResource en electron-builder — ver package.json).
+const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, "assets", "logo.ico")
+    : path.join(__dirname, "..", "assets", "logo.ico");
+
 async function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
+        icon: iconPath,
         webPreferences: {
             preload: path.join(__dirname, "preload.mjs"), // ojo: tu build genera preload.mjs, no .js
             contextIsolation: true,

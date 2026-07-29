@@ -226,9 +226,9 @@ CREATE TABLE Producto (
   costo_final          DECIMAL(12,2),
   umbral_rojo_dias     INT DEFAULT 7,
   umbral_amarillo_dias INT DEFAULT 15,
-  umbral_rojo_stock     INT DEFAULT NULL COMMENT 'Unidades totales o menos = stock muy bajo (rojo)',
-  umbral_amarillo_stock INT DEFAULT NULL COMMENT 'Unidades totales o menos = stock bajo (amarillo)',
-  meta_estanteria       INT DEFAULT NULL COMMENT 'Unidades que siempre quieres ver en la estantería',
+  umbral_rojo_stock     DECIMAL(10,3) DEFAULT NULL COMMENT 'Unidades totales o menos = stock muy bajo (rojo). Admite decimales para productos en kilos.',
+  umbral_amarillo_stock DECIMAL(10,3) DEFAULT NULL COMMENT 'Unidades totales o menos = stock bajo (amarillo). Admite decimales para productos en kilos.',
+  meta_estanteria       DECIMAL(10,3) DEFAULT NULL COMMENT 'Unidades que siempre quieres ver en la estantería. Admite decimales para productos en kilos.',
   activo               BOOLEAN DEFAULT TRUE,
   created              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_update          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -285,10 +285,10 @@ CREATE INDEX idx_codalt_codigo ON Codigos_Alternos(codigo);
 -- ============================================================
 CREATE TABLE Inventario (
   id_producto         CHAR(36) PRIMARY KEY,
-  cantidad_total      INT NOT NULL DEFAULT 0,
-  cantidad_estanteria INT NOT NULL DEFAULT 0
+  cantidad_total      DECIMAL(10,3) NOT NULL DEFAULT 0,
+  cantidad_estanteria DECIMAL(10,3) NOT NULL DEFAULT 0
     COMMENT 'Unidades actualmente puestas en estantería (subconjunto de cantidad_total)',
-  cantidad_almacen    INT GENERATED ALWAYS AS (cantidad_total - cantidad_estanteria) STORED,
+  cantidad_almacen    DECIMAL(10,3) GENERATED ALWAYS AS (cantidad_total - cantidad_estanteria) STORED,
   last_update         TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_inv_producto FOREIGN KEY (id_producto) REFERENCES Producto(id_producto) ON DELETE CASCADE,
   CONSTRAINT chk_inv_estanteria CHECK (cantidad_estanteria >= 0 AND cantidad_estanteria <= cantidad_total)
@@ -297,7 +297,7 @@ CREATE TABLE Inventario (
 CREATE TABLE Entrada (
   id_entrada            CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_producto           CHAR(36) NOT NULL,
-  cantidad_total        INT NOT NULL,
+  cantidad_total        DECIMAL(10,3) NOT NULL,
   costo_compra_promedio DECIMAL(12,2),
   registrado_por        CHAR(36),
   created               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -310,7 +310,7 @@ CREATE TABLE Entrada_Detalle (
   id_detalle      CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_entrada      CHAR(36) NOT NULL,
   id_producto     CHAR(36) NOT NULL,
-  cantidad        INT NOT NULL,
+  cantidad        DECIMAL(10,3) NOT NULL,
   fecha_caducidad DATE,
   unidad          ENUM('piezas','kilos') DEFAULT 'piezas',
   costo_compra    DECIMAL(12,2),
@@ -339,8 +339,8 @@ CREATE TABLE Lote (
   id_lote             CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_producto         CHAR(36) NOT NULL,
   id_entrada          CHAR(36) NOT NULL,
-  cantidad            INT NOT NULL,
-  cantidad_disponible INT NOT NULL,
+  cantidad            DECIMAL(10,3) NOT NULL,
+  cantidad_disponible DECIMAL(10,3) NOT NULL,
   fecha_caducidad     DATE,
   estado_lote         ENUM('activo','parcial','agotado','caducado') DEFAULT 'activo',
   unidad              ENUM('piezas','kilos') DEFAULT 'piezas',
@@ -380,7 +380,7 @@ CREATE TABLE Venta_Detalle (
   id_vd                       CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_venta                    CHAR(36) NOT NULL,
   id_producto                 CHAR(36) NOT NULL,
-  cantidad                    INT NOT NULL,
+  cantidad                    DECIMAL(10,3) NOT NULL,
   precio_unitario              DECIMAL(12,2) NOT NULL,
   subtotal                    DECIMAL(12,2) GENERATED ALWAYS AS (cantidad * precio_unitario) STORED,
   id_margenes                 CHAR(36) NULL,
@@ -425,7 +425,7 @@ CREATE TABLE Ajuste_Inventario (
   id_ajuste       CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_producto     CHAR(36) NOT NULL,
   id_lote         CHAR(36),
-  cantidad_ajuste INT NOT NULL,
+  cantidad_ajuste DECIMAL(10,3) NOT NULL,
   motivo          VARCHAR(255) NOT NULL,
   autorizado_por  CHAR(36),
   created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -446,7 +446,7 @@ CREATE TABLE Ajuste_Inventario (
 CREATE TABLE Devolucion (
   id_devolucion     CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   id_producto       CHAR(36) NOT NULL,
-  cantidad_devuelta INT NOT NULL,
+  cantidad_devuelta DECIMAL(10,3) NOT NULL,
   precio_unitario   DECIMAL(10,2) NOT NULL,
   monto_devuelto    DECIMAL(10,2) AS (cantidad_devuelta * precio_unitario) STORED,
   motivo            ENUM('producto_danado','producto_caducado','error_cobro','cliente_insatisfecho','otro') NOT NULL,
@@ -530,8 +530,8 @@ CREATE TABLE Aviso (
   tipo              ENUM('stock_critico','estanteria_baja') NOT NULL,
   nivel             ENUM('amarillo','rojo') NOT NULL,
   mensaje           VARCHAR(255) NOT NULL,
-  cantidad_actual   INT NOT NULL,
-  cantidad_esperada INT,
+  cantidad_actual   DECIMAL(10,3) NOT NULL,
+  cantidad_esperada DECIMAL(10,3),
   leido             BOOLEAN NOT NULL DEFAULT FALSE,
   created           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   last_update       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -748,11 +748,11 @@ CREATE PROCEDURE sp_recalcular_avisos_producto(
   IN p_id_producto CHAR(36)
 )
 BEGIN
-  DECLARE v_rojo_stock INT;
-  DECLARE v_amarillo_stock INT;
-  DECLARE v_meta_estanteria INT;
-  DECLARE v_cantidad_total INT;
-  DECLARE v_cantidad_estanteria INT;
+  DECLARE v_rojo_stock DECIMAL(10,3);
+  DECLARE v_amarillo_stock DECIMAL(10,3);
+  DECLARE v_meta_estanteria DECIMAL(10,3);
+  DECLARE v_cantidad_total DECIMAL(10,3);
+  DECLARE v_cantidad_estanteria DECIMAL(10,3);
 
   SELECT p.umbral_rojo_stock, p.umbral_amarillo_stock, p.meta_estanteria,
          COALESCE(i.cantidad_total, 0), COALESCE(i.cantidad_estanteria, 0)
@@ -812,7 +812,7 @@ END$$
 -- Deja el resto en almacén (no puede exceder cantidad_total).
 CREATE PROCEDURE sp_reponer_estanteria(
   IN p_id_producto CHAR(36),
-  IN p_cantidad INT
+  IN p_cantidad DECIMAL(10,3)
 )
 BEGIN
   UPDATE Inventario
@@ -950,9 +950,9 @@ AFTER INSERT ON Venta_Detalle
 FOR EACH ROW
 BEGIN
   DECLARE v_id_lote CHAR(36);
-  DECLARE v_disponible INT;
-  DECLARE v_restante INT DEFAULT 0;
-  DECLARE v_descontar INT;
+  DECLARE v_disponible DECIMAL(10,3);
+  DECLARE v_restante DECIMAL(10,3) DEFAULT 0;
+  DECLARE v_descontar DECIMAL(10,3);
   DECLARE done INT DEFAULT FALSE;
 
   DECLARE cur_lotes CURSOR FOR
@@ -1203,7 +1203,7 @@ DELIMITER $$
 -- filas en Entrada_Detalle_Costo.
 CREATE PROCEDURE sp_registrar_entrada(
   IN  p_id_producto CHAR(36),
-  IN  p_cantidad_total INT,
+  IN  p_cantidad_total DECIMAL(10,3),
   IN  p_costo_compra_promedio DECIMAL(12,2),
   IN  p_detalles JSON,
   IN  p_registrado_por CHAR(36),
@@ -1288,7 +1288,7 @@ BEGIN
     p_lineas, '$[*]'
     COLUMNS (
       id_producto     CHAR(36)      PATH '$.id_producto',
-      cantidad        INT           PATH '$.cantidad',
+      cantidad        DECIMAL(10,3) PATH '$.cantidad',
       precio_unitario DECIMAL(12,2) PATH '$.precio_unitario'
     )
   ) AS jt
